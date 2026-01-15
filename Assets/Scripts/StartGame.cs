@@ -7,6 +7,7 @@ public class StartGame : MonoBehaviour
     public void StartScene()
 
     {
+        Debug.Log("Start button pressed. Loading scene: " + Intro);
         SceneManager.LoadScene(Intro);
     } 
 
