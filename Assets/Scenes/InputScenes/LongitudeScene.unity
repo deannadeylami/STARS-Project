@@ -531,7 +531,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1894240041}
         m_TargetAssemblyTypeName: InputFieldGrabber, Assembly-CSharp
-        m_MethodName: GrabLatitude
+        m_MethodName: GrabInput
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -880,7 +880,7 @@ GameObject:
   - component: {fileID: 1271198584}
   - component: {fileID: 1271198583}
   m_Layer: 5
-  m_Name: LatitudeQuestion
+  m_Name: Question
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -925,7 +925,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Enter latitude (degrees and minutes):'
+  m_text: 'Enter longitude (degrees and minutes):'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
   m_sharedMaterial: {fileID: 5210192816950331756, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
@@ -1159,7 +1159,7 @@ GameObject:
   - component: {fileID: 1894240039}
   - component: {fileID: 1894240038}
   m_Layer: 5
-  m_Name: LatitudeResponse
+  m_Name: Response
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1206,7 +1206,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1894240036}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: dd295ef3edf26fe4799f0c2e78c8a5f1, type: 3}
   m_Name: 
@@ -1237,11 +1237,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 1894240036}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4bf24ce720e7d59438509b7bbbd05dfe, type: 3}
+  m_Script: {fileID: 11500000, guid: d03b88f5ede011b45b660591d5dbe29f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  latitudeInput: {fileID: 1894240042}
-  latitudeValue: 
+  dateInput: {fileID: 0}
+  timeInput: {fileID: 0}
+  latitudeInput: {fileID: 0}
+  longitudeInput: {fileID: 1894240042}
 --- !u!114 &1894240042
 MonoBehaviour:
   m_ObjectHideFlags: 0
