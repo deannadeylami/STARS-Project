@@ -1,190 +1,227 @@
 using UnityEngine;
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Globalization;
+using System.IO;
 
 [System.Serializable]
 public class StarRecord
 {
-    //Catalog identifiers
-    public int id;        //Database primary key
-    public int hip;       //Hipparcos ID
-    public int hd;        //Henry Draper ID
-    public int hr;        //Harvard Revised ID
-    public string gl;     //Gliese catalog ID
-    public string bf;     //Bayer/Flamsteed designation
+    // --- Catalog identifiers (may be empty / -1 if missing) ---
+    public int id;   // Database primary key in HYG
+    public int hip;  // Hipparcos ID
+    public int hd;   // Henry Draper ID
+    public int hr;   // Harvard Revised ID
+    public string gl; // Gliese catalog ID (string)
+    public string bf; // Bayer/Flamsteed designation (string)
 
+    public string proper; // Common name, if any
 
-    public string proper; //Common name
+    // --- Equatorial coordinates (J2000) ---
+    // NOTE: In hyg_v42.csv, RA is stored in HOURS, Dec in DEGREES.
+    public float ra;   // Right Ascension (hours)
+    public float dec;  // Declination (degrees)
 
-    //Equatorial coordinates (degrees, J2000)
-    public float ra;      //Right ascension
-    public float dec;     //Declination
+    // --- Distance and photometry ---
+    public float dist; // Distance in parsecs
+    public float mag;  // Apparent magnitude (lower = brighter)
+    public string spect; // Spectral type (e.g., "G2V")
+    public float ci;   // Color index (B-V)
 
-    //Distance and photometry
-    public float dist;    //Distance in parsecs
-    public float mag;     //Apparent magnitude
-    public string spect;  //Spectral type
-    public float ci;      //Color index
-
-    //Proper motion (milliarcseconds per year)
+    // --- Proper motion (milliarcseconds per year) ---
     public float pmra;
     public float pmdec;
 
-    //Cartesian position (parsecs)
+    // --- Cartesian position (parsecs), relative to the Sun ---
     public float x;
     public float y;
     public float z;
 
-    //Cartesian velocity (parsecs per year)
+    // --- Cartesian velocity (parsecs per year) ---
     public float vx;
     public float vy;
     public float vz;
 
-    //Radian-based values
-    public float rarad;
-    public float decrad;
-    public float pmrarad;
-    public float pmdecrad;
+    // --- Precomputed radians (useful for fast trig later) ---
+    public float rarad;    // RA in radians
+    public float decrad;   // Dec in radians
+    public float pmrarad;  // Proper motion RA in rad/year
+    public float pmdecrad; // Proper motion Dec in rad/year
 }
 
 public class HYGCatalogParser : MonoBehaviour
 {
     [Header("Catalog Settings")]
-    public string catalogFileName = "hyg_v42.csv";
+    public string catalogFileName = "hyg_v42.csv"; // Expected in StreamingAssets
+
+    [Header("Filtering")]
+    public float magnitudeLimit = 6.0f; // Tier 1: ignore stars dimmer than 6.0
 
     [Header("Debug Verification")]
-    public bool logSampleRows = true;
+    public bool logSampleRows = true; // Print first N parsed rows to console
+    public int sampleRowCount = 30;
 
+    // Full catalog in memory
     public List<StarRecord> Stars { get; private set; }
+
+    // Cached subset for rendering (mag <= magnitudeLimit), sorted deterministically
+    public List<StarRecord> VisibleStarsMag6 { get; private set; }
 
     void Awake()
     {
+        // Parse as soon as this component loads (runtime load requirement).
         ParseCatalog();
     }
 
-    private void ParseCatalog()
+    public void ParseCatalog()
     {
-        Stars = new List<StarRecord>();
+        // Pre-allocate to reduce GC / resizing cost (HYG ~120k rows).
+        Stars = new List<StarRecord>(120000);
+        VisibleStarsMag6 = new List<StarRecord>(10000);
 
         string path = Path.Combine(Application.streamingAssetsPath, catalogFileName);
 
         if (!File.Exists(path))
         {
-            Debug.LogError("Catalog not found File not found: " + path);
+            Debug.LogError($"Catalog file not found: {path}");
             return;
         }
 
-        using (StreamReader reader = new StreamReader(path))
+        try
         {
-            string header = reader.ReadLine();
-            Debug.Log("HYG CSV Header: " + header);
-
-            int lineNumber = 0;
-
-            while (!reader.EndOfStream)
+            using (var reader = new StreamReader(path))
             {
-                lineNumber++;
-                string line = reader.ReadLine();
-
-                if (string.IsNullOrWhiteSpace(line))
-                    continue;
-
-                string[] fields = line.Split(',');
-
-                try
+                // First line is the CSV header (column names).
+                string header = reader.ReadLine();
+                if (string.IsNullOrWhiteSpace(header))
                 {
-                    StarRecord record = new StarRecord
+                    Debug.LogError("Catalog header line was empty.");
+                    return;
+                }
+
+                if (logSampleRows)
+                    Debug.Log("HYG CSV Header: " + header);
+
+                int lineNumber = 1; // header line
+                int logged = 0;
+
+                while (!reader.EndOfStream)
+                {
+                    lineNumber++;
+                    string line = reader.ReadLine();
+
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    string[] fields = line.Split(',');
+
+                    // We access indices up to 26 (pmdecrad), so ensure the row is long enough.
+                    if (fields.Length <= 26)
                     {
-                        id = ParseInt(fields[0]),
-                        hip = ParseInt(fields[1]),
-                        hd = ParseInt(fields[2]),
-                        hr = ParseInt(fields[3]),
-                        gl = fields[4],
-                        bf = fields[5],
-                        proper = fields[6],
+                        Debug.LogWarning(
+                            $"{{\"level\":\"warn\",\"code\":\"catalog_row_too_short\",\"line\":{lineNumber},\"fields\":{fields.Length}}}"
+                        );
+                        continue;
+                    }
 
-                        ra = ParseFloat(fields[7]),
-                        dec = ParseFloat(fields[8]),
-                        dist = ParseFloat(fields[9]),
-                        mag = ParseFloat(fields[10]),
-
-                        spect = fields[13],
-                        ci = ParseFloat(fields[16]),
-
-                        pmra = ParseFloat(fields[17]),
-                        pmdec = ParseFloat(fields[18]),
-
-                        x = ParseFloat(fields[19]),
-                        y = ParseFloat(fields[20]),
-                        z = ParseFloat(fields[21]),
-
-                        vx = ParseFloat(fields[22]),
-                        vy = ParseFloat(fields[23]),
-                        vz = ParseFloat(fields[24]),
-
-                        rarad = ParseFloat(fields[25]),
-                        decrad = ParseFloat(fields[26]),
-                        pmrarad = ParseFloat(fields[27]),
-                        pmdecrad = ParseFloat(fields[28])
-                    };
-
-                    Stars.Add(record);
-
-                    if (logSampleRows && lineNumber <= 30)
+                    try
                     {
-                        LogStarRecord(record, lineNumber);
+                        var record = new StarRecord
+                        {
+                            id = ParseInt(fields[0]),
+                            hip = ParseInt(fields[1]),
+                            hd = ParseInt(fields[2]),
+                            hr = ParseInt(fields[3]),
+                            gl = fields[4].Trim('"'),
+                            bf = fields[5].Trim('"'),
+                            proper = fields[6].Trim('"'),
+
+                            ra = ParseFloat(fields[7]),
+                            dec = ParseFloat(fields[8]),
+                            dist = ParseFloat(fields[9]),
+
+                            pmra = ParseFloat(fields[10]),
+                            pmdec = ParseFloat(fields[11]),
+
+                            mag = ParseFloat(fields[13]),
+                            spect = fields[15].Trim('"'),
+                            ci = ParseFloat(fields[16]),
+
+                            x = ParseFloat(fields[17]),
+                            y = ParseFloat(fields[18]),
+                            z = ParseFloat(fields[19]),
+
+                            vx = ParseFloat(fields[20]),
+                            vy = ParseFloat(fields[21]),
+                            vz = ParseFloat(fields[22]),
+
+                            rarad = ParseFloat(fields[23]),
+                            decrad = ParseFloat(fields[24]),
+                            pmrarad = ParseFloat(fields[25]),
+                            pmdecrad = ParseFloat(fields[26]),
+                        };
+
+                        Stars.Add(record);
+
+                        // Build the “renderable” subset now so later systems don’t re-filter every frame.
+                        if (!float.IsNaN(record.mag) && record.mag <= magnitudeLimit)
+                            VisibleStarsMag6.Add(record);
+
+                        // Optional: quick sanity check of parsed values
+                        if (logSampleRows && logged < sampleRowCount)
+                        {
+                            logged++;
+                            Debug.Log(
+                                $"HYG line {lineNumber} | id {record.id} | hip {record.hip} | proper '{record.proper}'" +
+                                $" | ra(h) {record.ra} | dec(deg) {record.dec} | mag {record.mag} | dist {record.dist}"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Keep going if a single row is malformed.
+                        Debug.LogWarning(
+                            $"{{\"level\":\"warn\",\"code\":\"catalog_row_parse_error\",\"line\":{lineNumber},\"message\":\"{Escape(ex.Message)}\"}}"
+                        );
                     }
                 }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning(
-                        "Hyg Catalog Parse error at line " +
-                        lineNumber + ": " + ex.Message
-                    );
-                }
             }
+
+            // Deterministic ordering for rendering: bright-to-dim, then stable by id.
+            VisibleStarsMag6.Sort((a, b) =>
+            {
+                int m = a.mag.CompareTo(b.mag);
+                if (m != 0) return m;
+                return a.id.CompareTo(b.id);
+            });
+
+            Debug.Log($"HYG Catalog Parsed: {Stars.Count} stars. Visible (mag<={magnitudeLimit:0.0}): {VisibleStarsMag6.Count}.");
         }
-
-        Debug.Log("Hyg Catalog Parsed " + Stars.Count + " star records.");
+        catch (Exception ex)
+        {
+            Debug.LogError(ex.ToString());
+        }
     }
 
-    private void LogStarRecord(StarRecord r, int row)
+    // Parses ints using invariant culture. Returns -1 if blank or invalid.
+    private static int ParseInt(string value)
     {
-        Debug.Log(
-            "Hyg Catalog Row " + row + " " +
-            "id " + r.id +
-            " | hip " + r.hip +
-            " | hd " + r.hd +
-            " | hr " + r.hr +
-            " | gl '" + r.gl + "'" +
-            " | bf '" + r.bf + "'" +
-            " | proper '" + r.proper + "'" +
-            " | ra " + r.ra +
-            " | dec " + r.dec +
-            " | dist " + r.dist +
-            " | mag " + r.mag +
-            " | pmra " + r.pmra +
-            " | pmdec " + r.pmdec
-        );
+        value = value.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(value)) return -1;
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int r) ? r : -1;
     }
 
-    //Safe parsing helpers
-
-    private int ParseInt(string value)
+    // Parses floats using invariant culture. Returns NaN if blank or invalid.
+    private static float ParseFloat(string value)
     {
-        int result;
-        return int.TryParse(value, out result) ? result : -1;
+        value = value.Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(value)) return float.NaN;
+        return float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out float r) ? r : float.NaN;
     }
 
-    private float ParseFloat(string value)
+    // Escapes strings log lines won't break.
+    private static string Escape(string s)
     {
-        float result;
-        return float.TryParse(
-            value,
-            NumberStyles.Float,
-            CultureInfo.InvariantCulture,
-            out result
-        ) ? result : float.NaN;
+        return s.Replace("\\", "\\\\").Replace("\"", "\\\"");
     }
 }
