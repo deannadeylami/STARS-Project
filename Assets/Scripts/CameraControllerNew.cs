@@ -4,36 +4,27 @@ using UnityEngine.InputSystem;
 public class CameraControllerNew : MonoBehaviour
 {
     // Rotation settings
-    public float rotationSpeed = 100f;
-    public float rotationX = 85f;
+    public float rotationSpeed = 100f;          // Speed of camera rotation
+    public float rotationX = 85f;               // Looking up and down limit
     public float rotationY = -85f;
 
-    private float horizontalRotation = 0f;
-    private float verticalRotation = 0f;
-    private Vector2 lookInput;
+    private float horizontalRotation = 0f;     // Left/right rotation
+    private float verticalRotation = 0f;       // Up/down rotation
+    private Vector2 lookInput;                 // Input from mouse
     
-    private CameraControl controls;
+    private CameraControl controls;            // Input action map reference, the binding of controls from input.   
 
-    void Awake()
+    void Awake()                               // Awake is called before the scene is loaded. 
     {
-        controls = new CameraControl();
-        controls.Camera.Look.performed += OnLook;
-        controls.Camera.Look.canceled += OnLook;
-        controls.Enable();
-    }
-
-    void OnEnable()
-    {
-        controls.Enable();
-    }
-
-    void OnDisable()
-    {
-        controls.Disable();
+        controls = new CameraControl();             // Setup the input action map.
+        controls.Camera.Look.performed += OnLook;   // Action occurs when the player moves the mouse.
+        controls.Camera.Look.canceled += OnLook;    // Action stops occuring when the player stops moving the mouse.
+        controls.Enable();                          // Enable these controls.
     }
 
     void Start()
     {
+        // Stops snapping to 0,0. Will be necessary later when adding additional UI screens.
         Vector3 angles = transform.eulerAngles;
         horizontalRotation = angles.y;
         verticalRotation = angles.x;
@@ -41,20 +32,17 @@ public class CameraControllerNew : MonoBehaviour
     
     void Update()
     {
-        // Adding in a deadzone to stop drifting from minor input
-        float deadzone = 0.01f;
-        lookInput.x = Mathf.Abs(lookInput.x) < deadzone ? 0 : lookInput.x;
-        lookInput.y = Mathf.Abs(lookInput.y) < deadzone ? 0 : lookInput.y;
+        // Update camera based on mouse input. 
+        horizontalRotation += lookInput.x * rotationSpeed; // Update left/right rotation
+        verticalRotation -= lookInput.y * rotationSpeed;   // Update up/down rotation
+        verticalRotation = Mathf.Clamp(verticalRotation, -rotationX, rotationX); // Stay within limits, avoid camera flipping.
 
-        horizontalRotation += lookInput.x * rotationSpeed;
-        verticalRotation -= lookInput.y * rotationSpeed;
-        verticalRotation = Mathf.Clamp(verticalRotation, -rotationX, rotationX);
-
-        transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0f);
+        transform.rotation = Quaternion.Euler(verticalRotation, horizontalRotation, 0f); // Apply rotation to the camera.
     }
 
     public void OnLook(InputAction.CallbackContext context)
     {
+        // Stores the mouse input value to be used in Update().
         lookInput = context.ReadValue<Vector2>();
     }
 }
