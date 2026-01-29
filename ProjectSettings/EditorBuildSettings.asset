@@ -9,15 +9,15 @@ EditorBuildSettings:
     path: Assets/Scenes/Title.unity
     guid: 77c3080a09566da40b8c6d68976a12d7
   - enabled: 1
-    path: Assets/Scenes/InputScenes/LatitudeScene.unity
+    path: Assets/Scenes/InputScene.unity
     guid: 52444b56a3bf615428ce4f9e98214ec5
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/InputScenes/LongitudeScene.unity
     guid: f56b539e33c4791439bb7942b16aeeff
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/InputScenes/DateScene.unity
     guid: 5d39d853bae3a3f49a275d004d302c5c
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/InputScenes/TimeScene.unity
     guid: 49f2ec92341480b4abc6f93c11b5528e
   - enabled: 1
