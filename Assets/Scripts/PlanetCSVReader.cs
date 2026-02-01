@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
 
 public class PlanetCsvLoader : MonoBehaviour
@@ -41,7 +39,7 @@ public class PlanetCsvLoader : MonoBehaviour
         }
         Debug.Log($"Loaded {planets.Count} planets.");
     }
-    PlanetCsvLoader ParsePlanetLine(string line)
+    Planet ParsePlanetLine(string line)
     {
         string[] p = line.Split(',');
 
@@ -49,8 +47,8 @@ public class PlanetCsvLoader : MonoBehaviour
         {
             return new Planet
             {
-                MethodBody = p[0],
-                DateOnly = DateTime.ParseExact(p[1], CultureInfo.InvariantCulture),
+                body = p[0],
+                date = DateTime.Parse(p[1], CultureInfo.InvariantCulture),
                 raDeg = double.Parse(p[2], CultureInfo.InvariantCulture),
                 decDeg = double.Parse(p[3], CultureInfo.InvariantCulture),
 
