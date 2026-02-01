@@ -7,32 +7,29 @@ public class InputFieldGrabber : MonoBehaviour
     public TMP_InputField dateInput, timeInput, latitudeInput, longitudeInput;
 
 
-    public void GrabInput()
-    {   
-        TMP_InputField current = GetCurrentInputField();
-        
-        if (current != null)
+    public void GrabAllInputs()
+    {           
+        // Grab input field values
+        string date = dateInput.text;
+        string time = timeInput.text;
+        string latitude = latitudeInput.text;
+        string longitude = longitudeInput.text;
+
+        // Check for empty fields
+        if (string.IsNullOrEmpty(date) || string.IsNullOrEmpty(time) || string.IsNullOrEmpty(latitude) || string.IsNullOrEmpty(longitude))
         {
-            Debug.Log($"{current.name} entered: {current.text}.");
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+            Debug.LogWarning("At least one input field is empty. Please fill in every field.");
+            return;
         }
-        else
-        {
-            Debug.LogWarning("No input field is assigned to be grabbed.");
-        }
+
+        // Log the values to the console
+        Debug.Log("Latitude: " + latitude);
+        Debug.Log("Longitude: " + longitude);
+        Debug.Log("Date: " + date);
+        Debug.Log("Time: " + time);
+
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+
     }
-    
-    private TMP_InputField GetCurrentInputField()
-    {
-        if (dateInput != null)
-            return dateInput;
-        else if (timeInput != null)
-            return timeInput;
-        else if (latitudeInput != null)
-            return latitudeInput;
-        else if (longitudeInput != null)
-            return longitudeInput;
-        else
-            return null;
-    }
+
 }

@@ -1,0 +1,35 @@
+{
+    "version": 1,
+    "name": "CameraControl",
+    "maps": [
+        {
+            "name": "Camera",
+            "id": "a550bbb5-15af-48b7-997a-3181499411d7",
+            "actions": [
+                {
+                    "name": "Look",
+                    "type": "Value",
+                    "id": "f59d4a76-0aa1-42a0-9926-e27ae39e5192",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "429a9388-fa11-4bcc-8860-a22f1441c81a",
+                    "path": "<Mouse>/delta",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Look",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}
