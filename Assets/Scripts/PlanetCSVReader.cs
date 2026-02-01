@@ -15,7 +15,7 @@ public class PlanetCsvLoader : MonoBehaviour
         LoadPlanets();
     }
 
-    void loadPlanets()
+    void LoadPlanets()
     {
         string path = Path.Combine(Application.streamingAssetsPath, csvFileName);
         if(!File.Exists(path))
