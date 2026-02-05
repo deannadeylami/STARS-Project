@@ -13,12 +13,16 @@ public class CameraControllerNew : MonoBehaviour
     private Vector2 lookInput;                 // Input from mouse
     
     private CameraControl controls;            // Input action map reference, the binding of controls from input.   
+    private bool mouseDrag = false;            // Keep track of user dragging/holding mouse button.
 
     void Awake()                               // Awake is called before the scene is loaded. 
     {
         controls = new CameraControl();             // Setup the input action map.
         controls.Camera.Look.performed += OnLook;   // Action occurs when the player moves the mouse.
         controls.Camera.Look.canceled += OnLook;    // Action stops occuring when the player stops moving the mouse.
+        
+        controls.Camera.Drag.performed += ctx => mouseDrag = true;  // Button pressed, dragging activated.
+        controls.Camera.Drag.canceled += ctx => mouseDrag = false; // Button let go, dragging deactivated.
         controls.Enable();                          // Enable these controls.
     }
 
@@ -32,6 +36,7 @@ public class CameraControllerNew : MonoBehaviour
     
     void Update()
     {
+        if (!mouseDrag) return;                           // Only rotate if mouse button held down (dragging activated).
         // Update camera based on mouse input. 
         horizontalRotation += lookInput.x * rotationSpeed; // Update left/right rotation
         verticalRotation -= lookInput.y * rotationSpeed;   // Update up/down rotation
