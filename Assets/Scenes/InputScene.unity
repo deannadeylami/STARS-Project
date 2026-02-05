@@ -648,6 +648,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 212315887}
   m_CullTransparentMesh: 1
+--- !u!1 &268167289
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 268167291}
+  - component: {fileID: 268167290}
+  m_Layer: 0
+  m_Name: SkySession
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &268167290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 268167289}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fdbb233c4bec52e4fa833363c57f46b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkySession
+  latitudeDeg: 0
+  longitudeDeg: 0
+  rawLatitude: 
+  rawLongitude: 
+  rawDate: 
+  rawTime: 
+--- !u!4 &268167291
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 268167289}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -7.38796, y: 17.21085, z: 18.94631}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &317108269
 GameObject:
   m_ObjectHideFlags: 0
@@ -1280,7 +1330,7 @@ MonoBehaviour:
   timeInput: {fileID: 765865735}
   latitudeInput: {fileID: 1894240042}
   longitudeInput: {fileID: 2142208196}
-  errorMessage: {fileID: 1463939268}
+  skySceneName: SkyScene
 --- !u!1 &430930321
 GameObject:
   m_ObjectHideFlags: 0
@@ -2690,6 +2740,55 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1724030187}
   m_CullTransparentMesh: 1
+--- !u!1 &1757075394
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1757075396}
+  - component: {fileID: 1757075395}
+  m_Layer: 0
+  m_Name: UIController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1757075395
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1757075394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d03b88f5ede011b45b660591d5dbe29f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::InputFieldGrabber
+  dateInput: {fileID: 340610818}
+  timeInput: {fileID: 765865735}
+  latitudeInput: {fileID: 1894240042}
+  longitudeInput: {fileID: 2142208196}
+  skySceneName: SkyScene
+--- !u!4 &1757075396
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1757075394}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -7.38796, y: 17.21085, z: 18.94631}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1765578723
 GameObject:
   m_ObjectHideFlags: 0
@@ -3257,7 +3356,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: e.g. 01/19/2026
+  m_text: YYYY-MM-DD e.g. 2026-05-04
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -3734,3 +3833,5 @@ SceneRoots:
   - {fileID: 110259977}
   - {fileID: 2068577955}
   - {fileID: 821062916}
+  - {fileID: 268167291}
+  - {fileID: 1757075396}
