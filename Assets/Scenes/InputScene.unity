@@ -737,6 +737,7 @@ RectTransform:
   - {fileID: 1724030188}
   - {fileID: 765865730}
   - {fileID: 403336996}
+  - {fileID: 1463939267}
   m_Father: {fileID: 2068577955}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -1330,6 +1331,7 @@ MonoBehaviour:
   timeInput: {fileID: 765865735}
   latitudeInput: {fileID: 1894240042}
   longitudeInput: {fileID: 2142208196}
+  errorText: {fileID: 0}
   skySceneName: SkyScene
 --- !u!1 &430930321
 GameObject:
@@ -2302,12 +2304,12 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1463939266}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 2068577955}
+  m_Father: {fileID: 317108270}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
@@ -2773,6 +2775,7 @@ MonoBehaviour:
   timeInput: {fileID: 765865735}
   latitudeInput: {fileID: 1894240042}
   longitudeInput: {fileID: 2142208196}
+  errorText: {fileID: 1463939268}
   skySceneName: SkyScene
 --- !u!4 &1757075396
 Transform:
@@ -3531,7 +3534,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 317108270}
-  - {fileID: 1463939267}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
