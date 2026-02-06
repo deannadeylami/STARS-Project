@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Text;
-using Newtonsoft.Json.Linq; // <-- Newtonsoft
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 public class CelestialEphemerisUnity : MonoBehaviour
@@ -27,11 +27,11 @@ public class CelestialEphemerisUnity : MonoBehaviour
         {"Moon", "301"},
     };
 
-    public double latitude = 40.7128;
-    public double longitude = -74.0060;
+    public double latitude = SkySession.Instance.LatitudeDeg;
+    public double longitude = SkySession.Instance.LongitudeDeg;
     public double altitude = 0.0;
 
-    public string simDate = "2026-01-23 23:21";
+    public string simDate = SkySession.Instance.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
 
     private void Start()
     {
