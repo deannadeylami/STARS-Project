@@ -99,15 +99,48 @@ public class SkyMapRenderer : MonoBehaviour
             //sets the calculated position
             p.position = position;
 
-            //setting star size based on magnitude (the brighter they are the bigger the size)
-            p.startSize = Mathf.Lerp(0.8f, 0.1f, star.mag / catalog.magnitudeLimit);
-            p.startColor = Color.white;
+            // --- Improved magnitude mapping ---
+
+            // Normalize magnitude into 0–1 range (0 = brightest, 1 = dimmest)
+            float t = Mathf.InverseLerp(0f, catalog.magnitudeLimit, star.mag);
+
+            // Nonlinear curve so bright stars stand out more
+            float curved = Mathf.Pow(t, 1.7f);
+
+            // Size mapping (tweak these two numbers to taste)
+            float maxSize = 4.5f;   // size of brightest stars
+            float minSize = 0.5f;  // size of dimmest stars
+
+            p.startSize = Mathf.Lerp(maxSize, minSize, curved);
+
+            // Brightness (alpha) mapping
+            float alpha = Mathf.Lerp(1.0f, 0.15f, Mathf.Pow(t, 1.3f));
+
+            p.startColor = new Color(1f, 1f, 1f, alpha);
+
 
             //wont expire
             p.remainingLifetime = Mathf.Infinity; 
 
             //add star particle to list
             particleList.Add(p);
+
+            // --- DEBUG: Polaris sanity check ---
+            if (!string.IsNullOrWhiteSpace(star.proper) &&
+                star.proper.Trim().Equals("Polaris", StringComparison.OrdinalIgnoreCase))
+            {
+                double altDeg = AstronomyTime.RadToDeg(altRad);
+                double azDeg  = AstronomyTime.RadToDeg(azRad);
+
+                Debug.Log(
+                    $"[Polaris] lat={SkySession.Instance.LatitudeDeg:F4} lon={SkySession.Instance.LongitudeDeg:F4} " +
+                    $"local={SkySession.Instance.LocalDateTime:yyyy-MM-dd HH:mm} " +
+                    $"UTC={utc:yyyy-MM-dd HH:mm} JD={jd:F5} LST={lst:F3}deg " +
+                    $"RA={raDeg:F3}deg Dec={star.dec:F3}deg HA={haDeg:F3}deg " +
+                    $"ALT={altDeg:F3}deg AZ={azDeg:F3}deg"
+                );
+            }
+
         }
 
         //convert list to array
