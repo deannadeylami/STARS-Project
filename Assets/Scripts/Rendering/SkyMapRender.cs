@@ -1,36 +1,38 @@
-//Incorporating catalog, Astronomy computations/time conversions and skysession 
+// Incorporating catalog, Astronomy computations/time conversions and skysession 
 using System;
 using UnityEngine;
 using System.Collections.Generic;
 
-[RequireComponent(typeof(ParticleSystem))] //Ensures ParticleSystem component is attached to GameObject
+[RequireComponent(typeof(ParticleSystem))]
 public class SkyMapRenderer : MonoBehaviour
 {
     public HYGCatalogParser catalog;
-    public float skyRadius = 100f; //radius of our sky all the stars are placed here
+    public float skyRadius = 100f;
 
     private ParticleSystem ps;
-    private ParticleSystem.Particle[] particles; //Array that stores the generated star particles
+    private ParticleSystem.Particle[] particles;
+
+    // Small tolerance to avoid jitter right at the horizon
+    private const double HorizonEpsRad = 1e-6;
 
     void Start()
     {
-        ps = GetComponent<ParticleSystem>();//Get the particlesystem component attached to this GameObject
+        ps = GetComponent<ParticleSystem>();
 
-        //Configure particle system for manual control
+        // Configure particle system for manual control
         var main = ps.main;
         main.loop = false;
         main.playOnAwake = false;
         main.maxParticles = 119626;
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
-        main.startSpeed = 0; //eliminates star movement
-        main.startLifetime = Mathf.Infinity; //maintains stars visibility
+        main.startSpeed = 0;
+        main.startLifetime = Mathf.Infinity;
 
-        RenderSky(); //generates the star field when scene starts
+        RenderSky();
     }
 
     public void RenderSky()
     {
-        //The 2 if statements below are to ensure that he skySession is being read and that the Catalog is also being read
         if (SkySession.Instance == null)
         {
             Debug.LogError("SkySession missing from scene.");
@@ -42,114 +44,86 @@ public class SkyMapRenderer : MonoBehaviour
             return;
         }
 
-        //Incorporationg of the AstronomyTime script and sky session
         DateTimeOffset utc = AstronomyTime.LocalToUtc(SkySession.Instance.LocalDateTime);
         double jd = AstronomyTime.JulianDate(utc);
         double gmst = AstronomyTime.GreenwichMeanSiderealTimeDeg(jd);
         double lst = AstronomyTime.LocalSiderealTimeDeg(gmst, SkySession.Instance.LongitudeDeg);
         double latitudeRad = AstronomyTime.DegToRad(SkySession.Instance.LatitudeDeg);
 
-        //Temporary list to store generated star particles
         List<ParticleSystem.Particle> particleList = new List<ParticleSystem.Particle>();
 
-        //loop through each visible star with a mag <= 6.0 in the HYG catalog
         foreach (var star in catalog.VisibleStarsMag6)
         {
-            //Skip stars with invalid Right Ascension or Declination
-            if (float.IsNaN(star.ra) || float.IsNaN(star.dec))
+            if (float.IsNaN(star.ra) || float.IsNaN(star.dec) || float.IsNaN(star.mag))
                 continue;
 
-            //Convert RA from hours to degrees (1 hour = 15 degrees)
+            // RA hours -> degrees
             double raDeg = star.ra * 15.0;
             double haDeg = AstronomyTime.HourAngleDeg(lst, raDeg);
             double haRad = AstronomyTime.DegToRad(haDeg);
             double decRad = AstronomyTime.DegToRad(star.dec);
 
-            //using spherical astronomy formula compute sine of altitude
+            // --- Altitude ---
             double sinAlt =
                 Math.Sin(decRad) * Math.Sin(latitudeRad) +
                 Math.Cos(decRad) * Math.Cos(latitudeRad) * Math.Cos(haRad);
 
-            //altitude angle above the horizon
+            // Clamp for numeric safety
+            sinAlt = Math.Clamp(sinAlt, -1.0, 1.0);
+
             double altRad = Math.Asin(sinAlt);
-            //skips stars under the horizon with an altitude <=0
-            if (altRad <= 0) continue;
 
-            double cosAz =
-                (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
-                (Math.Cos(altRad) * Math.Cos(latitudeRad));
+            // Skip stars under horizon (with tiny epsilon)
+            if (altRad <= HorizonEpsRad) continue;
 
-            //Clamp value to valid range to prevent floating point error
-            cosAz = Math.Clamp(cosAz, -1.0, 1.0);
-            double azRad = Math.Acos(cosAz);
+            // This gives azimuth measured from SOUTH; convert to from NORTH by adding pi.
+            double sinHA = Math.Sin(haRad);
+            double cosHA = Math.Cos(haRad);
 
-            if (Math.Sin(haRad) > 0)
-                azRad = 2 * Math.PI - azRad;
+            // tan(dec) can blow up near +/-90°, but Polaris-like stars are fine, and this still behaves better than cos(lat) division.
+            double tanDec = Math.Tan(decRad);
 
-            //convert spherical coordinates (alt, az) 
-            Vector3 position = new Vector3(
-                (float)(skyRadius * Math.Cos(altRad) * Math.Sin(azRad)),//X
-                (float)(skyRadius * Math.Sin(altRad)),//Y
-                (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))//Z
+            double azSouth = Math.Atan2(
+                sinHA,
+                (cosHA * Math.Sin(latitudeRad)) - (tanDec * Math.Cos(latitudeRad))
             );
 
-            //creates new particle for star
-            ParticleSystem.Particle p = new ParticleSystem.Particle();
-            
-            //sets the calculated position
-            p.position = position;
+            double azRad = azSouth + Math.PI; // convert south-based to north-based
+
+            // Normalize to [0, 2pi)
+            azRad = azRad % (2.0 * Math.PI);
+            if (azRad < 0) azRad += 2.0 * Math.PI;
+
+            // Convert spherical (alt, az) to 3D position on dome
+            Vector3 position = new Vector3(
+                (float)(skyRadius * Math.Cos(altRad) * Math.Sin(azRad)), // X
+                (float)(skyRadius * Math.Sin(altRad)),                  // Y
+                (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))  // Z
+            );
+
+            ParticleSystem.Particle p = new ParticleSystem.Particle
+            {
+                position = position,
+                remainingLifetime = Mathf.Infinity
+            };
 
             // --- Improved magnitude mapping ---
-
-            // Normalize magnitude into 0–1 range (0 = brightest, 1 = dimmest)
             float t = Mathf.InverseLerp(0f, catalog.magnitudeLimit, star.mag);
-
-            // Nonlinear curve so bright stars stand out more
             float curved = Mathf.Pow(t, 1.7f);
 
-            // Size mapping (tweak these two numbers to taste)
-            float maxSize = 4.5f;   // size of brightest stars
-            float minSize = 0.5f;  // size of dimmest stars
-
+            float maxSize = 4.5f;
+            float minSize = 0.5f;
             p.startSize = Mathf.Lerp(maxSize, minSize, curved);
 
-            // Brightness (alpha) mapping
             float alpha = Mathf.Lerp(1.0f, 0.15f, Mathf.Pow(t, 1.3f));
-
             p.startColor = new Color(1f, 1f, 1f, alpha);
 
-
-            //wont expire
-            p.remainingLifetime = Mathf.Infinity; 
-
-            //add star particle to list
             particleList.Add(p);
-
-            // --- DEBUG: Polaris sanity check ---
-            if (!string.IsNullOrWhiteSpace(star.proper) &&
-                star.proper.Trim().Equals("Polaris", StringComparison.OrdinalIgnoreCase))
-            {
-                double altDeg = AstronomyTime.RadToDeg(altRad);
-                double azDeg  = AstronomyTime.RadToDeg(azRad);
-
-                Debug.Log(
-                    $"[Polaris] lat={SkySession.Instance.LatitudeDeg:F4} lon={SkySession.Instance.LongitudeDeg:F4} " +
-                    $"local={SkySession.Instance.LocalDateTime:yyyy-MM-dd HH:mm} " +
-                    $"UTC={utc:yyyy-MM-dd HH:mm} JD={jd:F5} LST={lst:F3}deg " +
-                    $"RA={raDeg:F3}deg Dec={star.dec:F3}deg HA={haDeg:F3}deg " +
-                    $"ALT={altDeg:F3}deg AZ={azDeg:F3}deg"
-                );
-            }
-
         }
 
-        //convert list to array
         particles = particleList.ToArray();
-
-        //send particle data to unity
         ps.SetParticles(particles, particles.Length);
 
-        //shows how many stars were rendered
         Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
     }
 }
