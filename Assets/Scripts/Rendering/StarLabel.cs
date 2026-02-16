@@ -135,6 +135,10 @@ public class StarLabel : MonoBehaviour
         // Apply constant uniform scale to all labels
         label.transform.localScale = Vector3.one * labelScale;
 
+        // Flip the labels and have them face the camera.
+        label.transform.LookAt(Camera.main.transform);
+        label.transform.Rotate(0, 180f, 0);
+
         // Store reference so we can delete it later when re-rendering
         activeLabels.Add(label);
     }
