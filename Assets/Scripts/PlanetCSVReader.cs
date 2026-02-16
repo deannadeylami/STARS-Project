@@ -10,11 +10,6 @@ public class PlanetCsvLoader : MonoBehaviour
 
     public List<Planet> planets = new List<Planet>();
 
-    public void Start()
-    {
-        LoadPlanets();
-    }
-
     void LoadPlanets()
     {
         string path = Path.Combine(Application.streamingAssetsPath, csvFileName);
