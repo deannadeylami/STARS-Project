@@ -11,6 +11,10 @@ public class SkyMapRenderer : MonoBehaviour
 
     private ParticleSystem ps;
     private ParticleSystem.Particle[] particles;
+    private float[] baseAlpha;
+    private float[] baseSize;
+    private float[] twinkleOffsets;
+    private float[] twinkleSpeeds;
 
     // Small tolerance to avoid jitter right at the horizon
     private const double HorizonEpsRad = 1e-6;
@@ -122,8 +126,76 @@ public class SkyMapRenderer : MonoBehaviour
         }
 
         particles = particleList.ToArray();
+        
+        int n = particles.Length;
+        baseAlpha = new float[n];
+        baseSize = new float[n];
+        twinkleOffsets = new float[n];
+        twinkleSpeeds = new float[n];
+
+        for (int i = 0; i < particles.Length; i++)
+        {
+            baseAlpha[i] = particles[i].startColor.a;
+            baseSize[i] = particles[i].startSize;
+
+            // Randomize twinkle for each star
+            twinkleOffsets[i] = UnityEngine.Random.Range(0f, Mathf.PI * 2f); // random phase
+            twinkleSpeeds[i] = UnityEngine.Random.Range(0.8f, 1.2f); // random speed
+        }
+
         ps.SetParticles(particles, particles.Length);
 
         Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
     }
+    void Update()
+    {
+        if (particles == null) return;
+
+        for (int i = 0; i < particles.Length; i++)
+        {
+            Color c = particles[i].startColor;
+
+            if (baseSize[i] > 2.5f) // Bright stars - dramatic twinkle
+            {
+                float t = Time.time * twinkleSpeeds[i] + twinkleOffsets[i];
+                
+                float twinkle1 = Mathf.PerlinNoise(t * 0.8f, i * 0.01f);
+                float twinkle2 = Mathf.Sin(t * 3f) * 0.5f + 0.5f;
+                float combined = (twinkle1 * 0.6f + twinkle2 * 0.4f);
+                
+                combined = Mathf.Pow(combined, 1.5f);
+                
+                c.a = baseAlpha[i] * Mathf.Lerp(0.6f, 2.2f, combined); 
+                
+                particles[i].startSize = baseSize[i] * Mathf.Lerp(0.6f, 2.2f, combined); 
+                
+            }
+            else if (baseSize[i] > 1.5f) // Medium stars - moderate twinkle
+            {
+                float t = Time.time * twinkleSpeeds[i] * 0.7f + twinkleOffsets[i];
+                float twinkle = Mathf.PerlinNoise(t * 0.5f, i * 0.01f);
+                
+                // Smooth the transitions
+                twinkle = Mathf.SmoothStep(0f, 1f, twinkle);
+                
+                c.a = baseAlpha[i] * Mathf.Lerp(0.7f, 1.4f, twinkle); 
+                particles[i].startSize = baseSize[i] * Mathf.Lerp(0.85f, 1.25f, twinkle);
+            }
+            else // Small stars - very gentle, smooth flicker
+            {
+                float microTwinkle = Mathf.PerlinNoise(Time.time * 0.2f + twinkleOffsets[i], i * 0.05f);
+                
+                // Apply smoothing to prevent choppiness
+                microTwinkle = Mathf.SmoothStep(0.2f, 0.8f, microTwinkle);
+                
+                c.a = baseAlpha[i] * Mathf.Lerp(0.85f, 1.1f, microTwinkle);
+                particles[i].startSize = baseSize[i]; 
+            }
+
+            particles[i].startColor = c;
+        }
+
+        ps.SetParticles(particles, particles.Length);
+    }
 }
+
