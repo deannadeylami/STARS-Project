@@ -16,7 +16,7 @@ public class StarLabel : MonoBehaviour
 
     private const double HorizonEpsRad = 1e-6; //small epsilon to prevent floating pt errors at the horizon 
     private List<GameObject> activeLabels = new List<GameObject>(); //keeps track of all currently rendered labels
-
+    private GameObject labelParent; //Parent object for all labels
     void Start()
     {
         RenderLabels();
@@ -24,6 +24,8 @@ public class StarLabel : MonoBehaviour
 
     public void RenderLabels()
     {
+        if (labelParent != null) return;
+
         //Bottom two if statements check skysession and catalog making sure its there
         if (SkySession.Instance == null)
         {
@@ -37,7 +39,9 @@ public class StarLabel : MonoBehaviour
             return;
         }
 
-        ClearLabels(); //Remove previously created labels before re-rendering
+        // Create parent for labels
+        labelParent = new GameObject("StarLabels");
+        labelParent.transform.parent = transform;
 
         //time conversions
         DateTimeOffset utc = AstronomyTime.LocalToUtc(SkySession.Instance.LocalDateTime);
@@ -115,6 +119,16 @@ public class StarLabel : MonoBehaviour
         //Log how many labels were successfully created
         Debug.Log($"Rendered {activeLabels.Count} star labels.");
     }
+    
+    // Enable/disable all labels (Called by settings menu toggle).
+    public void SetLabelsVisible(bool visible)
+    {
+        if (labelParent == null)
+            RenderLabels();
+
+        labelParent.SetActive(visible);
+    }
+
     private void CreateLabel(string starName, Vector3 starPosition)
     {
         // Move label slightly outward from the sky dome
@@ -124,7 +138,7 @@ public class StarLabel : MonoBehaviour
         // Instantiate the label prefab at computed position
         // Quaternion.identity = no rotation
         // transform = make this script's GameObject the parent
-        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, transform);
+        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, labelParent.transform);
 
         // Get the TextMesh component from the prefab
         TextMesh textMesh = label.GetComponent<TextMesh>();
