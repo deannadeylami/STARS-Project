@@ -195,8 +195,6 @@ MonoBehaviour:
   catalog: {fileID: 1351580314}
   skyRadius: 100
   starLabelPrefab: {fileID: 7247827116181725925, guid: 5ef0a01fc3fc96249897da904df237de, type: 3}
-  labelOnlyBrightStars: 0
-  brightMagnitudeLimit: 2.5
   labelScale: 1
 --- !u!4 &299332703
 Transform:
@@ -5858,13 +5856,20 @@ MonoBehaviour:
   catalog: {fileID: 1351580314}
   width: 2048
   height: 2048
-  jpegQuality: 92
+  jpegQuality: 100
   drawHorizonCircle: 1
   horizonThicknessPx: 2
   maxStarRadiusPx: 4
   minStarRadiusPx: 1
   minAlpha: 0.15
   maxAlpha: 1
+  enableLabels: 1
+  maxLabelMagnitude: 6
+  labelFontScale: 1
+  labelColor:
+    serializedVersion: 2
+    rgba: 4291348680
+  basicLabelCollisionAvoidance: 1
   folderName: StarMapExports
 --- !u!4 &1878757777
 Transform:
