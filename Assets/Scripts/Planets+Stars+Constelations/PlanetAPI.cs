@@ -1,7 +1,7 @@
+
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Globalization;
+using System.Collections.Generic;using System.Globalization;
 using System.Net.Http;
 using System.Text;
 using Newtonsoft.Json.Linq;
@@ -27,15 +27,23 @@ public class CelestialEphemerisUnity : MonoBehaviour
         {"Moon", "301"},
     };
 
-    public double latitude = SkySession.Instance.LatitudeDeg;
-    public double longitude = SkySession.Instance.LongitudeDeg;
-    public double altitude = 0.0;
-
-    public string simDate = SkySession.Instance.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+        private double latitude;
+        private double longitude;
+        private double altitude = 0.0;
+        private string simDate;
 
     private void Start()
     {
-        StartCoroutine(QueryHorizons());
+            if(SkySession.Instance == null)
+            {
+                Debug.LogError("SkySession instance not found. Ensure SkySession is initialized before CelestialEphemerisUnity.");
+                return;
+            }
+
+            latitude = SkySession.Instance.LatitudeDeg;
+            longitude = SkySession.Instance.LongitudeDeg;
+            simDate = SkySession.Instance.LocalDateTime.ToString("yyyy-MM-dd HH:mm");
+            StartCoroutine(QueryHorizons());
     }
 
     private IEnumerator QueryHorizons()
@@ -51,6 +59,7 @@ public class CelestialEphemerisUnity : MonoBehaviour
         {
             Debug.Log($"Querying Horizons for {body.Key}...");
             string url = BuildHorizonsUrl(body.Value, center, startDate, stopDate, "1,2,3,5,6,9,20");
+            Debug.Log("Url: " + url);
             yield return StartCoroutine(FetchAndParse(url, body.Key, csvBuilder));
         }
 
@@ -72,6 +81,21 @@ public class CelestialEphemerisUnity : MonoBehaviour
         string filePath = System.IO.Path.Combine(streamingPath, "PlanetEphemerisData.csv");
         System.IO.File.WriteAllText(filePath, csvOutput);
         Debug.Log($"\nSaved ephemeris to {filePath}");
+        // === Trigger Load + Render AFTER CSV exists ===
+        PlanetCsvLoader loader = FindFirstObjectByType<PlanetCsvLoader>();
+        PlanetRender renderer = FindFirstObjectByType<PlanetRender>();
+
+        if (loader != null && renderer != null)
+        {
+            loader.planets.Clear();
+            loader.SendMessage("LoadPlanets", SendMessageOptions.DontRequireReceiver);
+            renderer.RenderPlanets();
+        }
+        else
+        {
+            Debug.LogError("Planet system components not found.");
+        }
+
     }
 
     private string BuildHorizonsUrl(string command, string center, DateTime startDate, DateTime stopDate, string quantities)
