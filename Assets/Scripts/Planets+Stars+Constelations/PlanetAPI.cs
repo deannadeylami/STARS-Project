@@ -82,7 +82,7 @@ public class CelestialEphemerisUnity : MonoBehaviour
         System.IO.File.WriteAllText(filePath, csvOutput);
         Debug.Log($"\nSaved ephemeris to {filePath}");
         // === Trigger Load + Render AFTER CSV exists ===
-        PlanetCsvLoader loader = FindFirstObjectByType<PlanetCsvLoader>();
+        PlanetCSVReader loader = FindFirstObjectByType<PlanetCSVReader>();
         PlanetRender renderer = FindFirstObjectByType<PlanetRender>();
 
         if (loader != null && renderer != null)

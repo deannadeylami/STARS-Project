@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using UnityEngine;
 
-public class PlanetCsvLoader : MonoBehaviour
+public class PlanetCSVReader : MonoBehaviour
 {
     public string csvFileName = "PlanetEphemerisData.csv";
 
