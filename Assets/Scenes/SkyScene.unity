@@ -5859,16 +5859,38 @@ MonoBehaviour:
   jpegQuality: 100
   drawHorizonCircle: 1
   horizonThicknessPx: 2
+  horizonColor:
+    serializedVersion: 2
+    rgba: 4283453520
   maxStarRadiusPx: 4
   minStarRadiusPx: 1
   minAlpha: 0.15
   maxAlpha: 1
-  enableLabels: 1
-  maxLabelMagnitude: 6
-  labelFontScale: 1
-  labelColor:
+  enableStarLabels: 1
+  maxStarLabelMagnitude: 2.5
+  starLabelFontScale: 1
+  starLabelColor:
     serializedVersion: 2
     rgba: 4291348680
+  enableConstellationLines: 1
+  constellationsCsvFileName: constellations_lines.csv
+  constellationLineColor:
+    serializedVersion: 2
+    rgba: 2697492560
+  constellationLineThicknessPx: 1
+  constellationLineMagLimit: 6.5
+  maxConstellationLineLengthFracOfRadius: 0.45
+  enableConstellationLabels: 1
+  constellationLabelFontScale: 2
+  constellationLabelColor:
+    serializedVersion: 2
+    rgba: 3539973260
+  constellationLabelRadialOffsetPx: 16
+  constellationLabelLeaderLines: 1
+  constellationLeaderLineColor:
+    serializedVersion: 2
+    rgba: 1862251660
+  constellationLeaderLineThicknessPx: 1
   basicLabelCollisionAvoidance: 1
   folderName: StarMapExports
 --- !u!4 &1878757777

@@ -8,10 +8,11 @@ using UnityEngine;
 /// Exports a 2D sky chart as a JPEG (zenith-centered azimuthal equidistant projection).
 /// Draw order: horizon (optional) -> constellation lines (optional) -> stars -> labels (optional)
 ///
-/// Constellation CSV (StreamingAssets):
-/// con,hd1,hd2
-/// ARI,17573,12929
-/// ...
+/// NEW constellation format (whitespace-separated, 88 lines typical):
+/// Aql 8  98036 97649 97649 97278 97649 95501 ...
+/// Meaning: CON N  hip1 hip2  hip3 hip4 ...
+/// Each pair is a segment.
+///
 /// Lines starting with # are ignored. Inline # comments are allowed.
 /// </summary>
 public class StarChartExporter2D : MonoBehaviour
@@ -44,15 +45,19 @@ public class StarChartExporter2D : MonoBehaviour
 
     [Header("Constellations")]
     public bool enableConstellationLines = true;
-    public string constellationLinesCsvFileName = "constellation_lines_hd.csv";
+
+    [Tooltip("NEW format file (whitespace separated): CON N hip1 hip2 hip3 hip4 ...")]
+    public string constellationLinesFileName = "constellations_lines.csv";
+
     public Color32 constellationLineColor = new Color32(80, 120, 200, 255);
     [Range(1, 4)] public int constellationLineThicknessPx = 1;
 
     [Tooltip("Only draw a line if BOTH endpoint stars have mag <= this value. Set to 99 to ignore magnitude filtering.")]
     public float constellationLineMagLimit = 6.0f;
 
-    [Tooltip("Safety: skip drawing a segment if its pixel length exceeds this fraction of chart radius.")]
-    [Range(0.1f, 2.0f)] public float maxConstellationLineLengthFracOfRadius = 0.65f;
+    [Header("Clip / Mask")]
+    [Tooltip("If true, constellation line drawing is masked so NO pixels are written outside the chart circle.")]
+    public bool maskLinesToChartCircle = true;
 
     [Header("Output")]
     public string folderName = "StarMapExports";
@@ -64,10 +69,11 @@ public class StarChartExporter2D : MonoBehaviour
         public string name;
     }
 
-    private struct ConSegHd
+    // NEW: HIP-based segment for the new file format
+    private struct ConSegHip
     {
         public string con;
-        public int hd1, hd2;
+        public int hip1, hip2;
     }
 
     public void Export2DChartJpeg()
@@ -102,19 +108,19 @@ public class StarChartExporter2D : MonoBehaviour
         if (drawHorizonCircle)
             DrawCircleOutline(pixels, width, height, cx, cy, Mathf.RoundToInt(R), horizonThicknessPx, horizonColor);
 
-        // ----- Build HD lookup from HYG -----
-        var hdToStar = BuildHdLookup(catalog.Stars);
+        // ----- Build HIP lookup from HYG -----
+        var hipToStar = BuildHipLookup(catalog.Stars);
 
-        // ----- Load constellation segments (HD-based) -----
-        List<ConSegHd> segs = null;
+        // ----- Load constellation segments (NEW HIP whitespace format) -----
+        List<ConSegHip> segs = null;
         if (enableConstellationLines)
         {
-            segs = LoadConstellationSegmentsHd(constellationLinesCsvFileName);
-            Debug.Log($"[StarChartExporter2D] Constellation HD segments loaded: {segs.Count} from {constellationLinesCsvFileName}");
+            segs = LoadConstellationSegmentsHipWhitespace(constellationLinesFileName);
+            Debug.Log($"[StarChartExporter2D] Constellation HIP segments loaded: {segs.Count} from {constellationLinesFileName}");
         }
 
         // ----- Precompute projected endpoints for constellation segments -----
-        Dictionary<int, (int x, int y, float mag)> hdToPix = null;
+        Dictionary<int, (int x, int y, float mag)> hipToPix = null;
 
         int endpointsNeeded = 0;
         int endpointsHaveStar = 0;
@@ -122,20 +128,20 @@ public class StarChartExporter2D : MonoBehaviour
 
         if (enableConstellationLines && segs != null && segs.Count > 0)
         {
-            hdToPix = new Dictionary<int, (int x, int y, float mag)>(4096);
+            hipToPix = new Dictionary<int, (int x, int y, float mag)>(4096);
             var needed = new HashSet<int>();
 
             foreach (var s in segs)
             {
-                needed.Add(s.hd1);
-                needed.Add(s.hd2);
+                needed.Add(s.hip1);
+                needed.Add(s.hip2);
             }
 
             endpointsNeeded = needed.Count;
 
-            foreach (int hd in needed)
+            foreach (int hip in needed)
             {
-                if (!hdToStar.TryGetValue(hd, out StarRecord star))
+                if (!hipToStar.TryGetValue(hip, out StarRecord star))
                     continue;
 
                 endpointsHaveStar++;
@@ -143,7 +149,7 @@ public class StarChartExporter2D : MonoBehaviour
                 if (TryProjectToPixel(star, lstDeg, latRad, cx, cy, R, out int px, out int py, out _))
                 {
                     float m = float.IsNaN(star.mag) ? 99f : star.mag;
-                    hdToPix[hd] = (px, py, m);
+                    hipToPix[hip] = (px, py, m);
                     endpointsProjected++;
                 }
             }
@@ -153,25 +159,24 @@ public class StarChartExporter2D : MonoBehaviour
 
         // ----- Draw constellation lines FIRST -----
         int linesDrawn = 0;
-        int skipMissingHd = 0;
+        int skipMissingHip = 0;
         int skipNotProjected = 0;
         int skipMag = 0;
-        int skipTooLong = 0;
+        int skipMaskedAllOutside = 0;
 
-        if (enableConstellationLines && segs != null && hdToPix != null)
+        if (enableConstellationLines && segs != null && hipToPix != null)
         {
-            float maxLen = maxConstellationLineLengthFracOfRadius * R;
-            float maxLen2 = maxLen * maxLen;
+            float r2 = R * R;
 
             foreach (var s in segs)
             {
-                if (!hdToStar.ContainsKey(s.hd1) || !hdToStar.ContainsKey(s.hd2))
+                if (!hipToStar.ContainsKey(s.hip1) || !hipToStar.ContainsKey(s.hip2))
                 {
-                    skipMissingHd++;
+                    skipMissingHip++;
                     continue;
                 }
 
-                if (!hdToPix.TryGetValue(s.hd1, out var a) || !hdToPix.TryGetValue(s.hd2, out var b))
+                if (!hipToPix.TryGetValue(s.hip1, out var a) || !hipToPix.TryGetValue(s.hip2, out var b))
                 {
                     // usually means one or both endpoints are below the horizon for the chosen inputs
                     skipNotProjected++;
@@ -184,21 +189,29 @@ public class StarChartExporter2D : MonoBehaviour
                     continue;
                 }
 
-                float dx = a.x - b.x;
-                float dy = a.y - b.y;
-                float d2 = dx * dx + dy * dy;
-
-                if (d2 > maxLen2)
+                if (maskLinesToChartCircle)
                 {
-                    skipTooLong++;
-                    continue;
-                }
+                    // Draw with circle mask. If the entire segment is outside and never enters, it will draw nothing.
+                    bool drewAnything = DrawLineThickMaskedToCircle(
+                        pixels, width, height,
+                        a.x, a.y, b.x, b.y,
+                        constellationLineColor, constellationLineThicknessPx,
+                        cx, cy, r2
+                    );
 
-                DrawLineThick(pixels, width, height, a.x, a.y, b.x, b.y, constellationLineColor, constellationLineThicknessPx);
-                linesDrawn++;
+                    if (!drewAnything)
+                        skipMaskedAllOutside++;
+                    else
+                        linesDrawn++;
+                }
+                else
+                {
+                    DrawLineThick(pixels, width, height, a.x, a.y, b.x, b.y, constellationLineColor, constellationLineThicknessPx);
+                    linesDrawn++;
+                }
             }
 
-            Debug.Log($"[StarChartExporter2D] Constellation lines: drawn={linesDrawn} skipMissingHd={skipMissingHd} skipNotProjected={skipNotProjected} skipMag={skipMag} skipTooLong={skipTooLong}");
+            Debug.Log($"[StarChartExporter2D] Constellation lines: drawn={linesDrawn} skipMissingHip={skipMissingHip} skipNotProjected={skipNotProjected} skipMag={skipMag} skipMaskedAllOutside={skipMaskedAllOutside}");
         }
 
         // ----- Draw stars -----
@@ -312,16 +325,16 @@ public class StarChartExporter2D : MonoBehaviour
         Debug.Log($"[StarChartExporter2D] Saved: {file} | stars={starsDrawn} labels={labelsDrawn} constLines={linesDrawn}");
     }
 
-    // ----------------- CSV loading (HD-based) -----------------
+    // ----------------- NEW constellation loading (HIP whitespace format) -----------------
 
-    private static List<ConSegHd> LoadConstellationSegmentsHd(string fileName)
+    private static List<ConSegHip> LoadConstellationSegmentsHipWhitespace(string fileName)
     {
-        var list = new List<ConSegHd>(4096);
+        var list = new List<ConSegHip>(4096);
         string path = Path.Combine(Application.streamingAssetsPath, fileName);
 
         if (!File.Exists(path))
         {
-            Debug.LogError($"[StarChartExporter2D] Constellation CSV NOT FOUND at: {path}\n" +
+            Debug.LogError($"[StarChartExporter2D] Constellation file NOT FOUND at: {path}\n" +
                            $"Make sure the file is in Assets/StreamingAssets/{fileName}");
             return list;
         }
@@ -338,38 +351,49 @@ public class StarChartExporter2D : MonoBehaviour
             // whole-line comment
             if (line.StartsWith("#")) continue;
 
-            // header
-            if (i == 0 && line.StartsWith("con", StringComparison.OrdinalIgnoreCase))
-                continue;
-
             // strip inline comments
             int hash = line.IndexOf('#');
             if (hash >= 0) line = line.Substring(0, hash).Trim();
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            string[] p = line.Split(',');
-            if (p.Length < 3) continue;
+            // split on any whitespace
+            string[] t = line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            if (t.Length < 4) continue; // need at least: CON N hip1 hip2
 
-            string con = p[0].Trim();
-            if (!int.TryParse(p[1].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hd1)) continue;
-            if (!int.TryParse(p[2].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int hd2)) continue;
+            string con = t[0].Trim();
 
-            if (hd1 <= 0 || hd2 <= 0) continue;
+            // token[1] is a count; ignore if parse fails
+            int.TryParse(t[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
 
-            list.Add(new ConSegHd { con = con, hd1 = hd1, hd2 = hd2 });
+            // parse remaining tokens as ints
+            var ids = new List<int>(t.Length - 2);
+            for (int k = 2; k < t.Length; k++)
+            {
+                if (int.TryParse(t[k], NumberStyles.Integer, CultureInfo.InvariantCulture, out int id) && id > 0)
+                    ids.Add(id);
+            }
+
+            // create pairs: (ids[0],ids[1]), (ids[2],ids[3])...
+            for (int k = 0; k + 1 < ids.Count; k += 2)
+            {
+                int a = ids[k];
+                int b = ids[k + 1];
+                if (a <= 0 || b <= 0) continue;
+                list.Add(new ConSegHip { con = con, hip1 = a, hip2 = b });
+            }
         }
 
         return list;
     }
 
-    private static Dictionary<int, StarRecord> BuildHdLookup(List<StarRecord> allStars)
+    private static Dictionary<int, StarRecord> BuildHipLookup(List<StarRecord> allStars)
     {
         var dict = new Dictionary<int, StarRecord>(allStars.Count / 3);
         foreach (var s in allStars)
         {
             if (s == null) continue;
-            if (s.hd > 0 && !dict.ContainsKey(s.hd))
-                dict[s.hd] = s;
+            if (s.hip > 0 && !dict.ContainsKey(s.hip))
+                dict[s.hip] = s;
         }
         return dict;
     }
@@ -398,7 +422,7 @@ public class StarChartExporter2D : MonoBehaviour
         altDeg = (float)AstronomyTime.RadToDeg(altRad);
         if (altRad <= 0) return false;
 
-        // azimuth (robust atan2 form to behave better near poles)
+        // azimuth (robust atan2 form)
         double sinHA = Math.Sin(haRad);
         double cosHA = Math.Cos(haRad);
         double tanDec = Math.Tan(decRad);
@@ -527,6 +551,36 @@ public class StarChartExporter2D : MonoBehaviour
         }
     }
 
+    // NEW: masked line drawing so we never write outside the chart circle
+    private static bool DrawLineThickMaskedToCircle(
+        Color32[] pix, int w, int h,
+        int x0, int y0, int x1, int y1,
+        Color32 col, int thickness,
+        int cx, int cy, float r2)
+    {
+        int dx = Math.Abs(x1 - x0);
+        int sx = x0 < x1 ? 1 : -1;
+        int dy = -Math.Abs(y1 - y0);
+        int sy = y0 < y1 ? 1 : -1;
+        int err = dx + dy;
+
+        int r = Mathf.Max(0, thickness - 1);
+
+        bool wroteAny = false;
+
+        while (true)
+        {
+            wroteAny |= DrawSolidDotMaskedToCircle(pix, w, h, x0, y0, r, col, cx, cy, r2);
+
+            if (x0 == x1 && y0 == y1) break;
+            int e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+
+        return wroteAny;
+    }
+
     private static void DrawSolidDot(Color32[] pix, int w, int h, int cx, int cy, int radius, Color32 col)
     {
         int minX = Mathf.Max(0, cx - radius);
@@ -549,6 +603,46 @@ public class StarChartExporter2D : MonoBehaviour
                     pix[row + xx] = col;
             }
         }
+    }
+
+    // NEW: dot masked to circle, returns true if wrote any pixel inside circle
+    private static bool DrawSolidDotMaskedToCircle(
+        Color32[] pix, int w, int h,
+        int px, int py, int radius, Color32 col,
+        int chartCx, int chartCy, float chartR2)
+    {
+        int minX = Mathf.Max(0, px - radius);
+        int maxX = Mathf.Min(w - 1, px + radius);
+        int minY = Mathf.Max(0, py - radius);
+        int maxY = Mathf.Min(h - 1, py + radius);
+
+        int dotR2 = radius * radius;
+        bool wrote = false;
+
+        for (int yy = minY; yy <= maxY; yy++)
+        {
+            int dyDot = yy - py;
+            int dyDot2 = dyDot * dyDot;
+            int row = yy * w;
+
+            int dyChart = yy - chartCy;
+
+            for (int xx = minX; xx <= maxX; xx++)
+            {
+                int dxDot = xx - px;
+                if (dxDot * dxDot + dyDot2 > dotR2)
+                    continue;
+
+                int dxChart = xx - chartCx;
+                if (dxChart * dxChart + dyChart * dyChart > chartR2)
+                    continue;
+
+                pix[row + xx] = col;
+                wrote = true;
+            }
+        }
+
+        return wrote;
     }
 
     private static void FlipVerticalInPlace(Color32[] pix, int w, int h)
