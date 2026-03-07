@@ -10,6 +10,7 @@ public class StarLabel : MonoBehaviour
     public HYGCatalogParser catalog;
     public float skyRadius = 100f;
     public GameObject starLabelPrefab;
+    private GameObject labelParent; //Parent object for all labels
 
     [Header("Label Settings")]
     public float labelScale = 1f;   // Constant size for all labels
@@ -37,7 +38,9 @@ public class StarLabel : MonoBehaviour
             return;
         }
 
-        ClearLabels(); //Remove previously created labels before re-rendering
+        // Create parent for labels
+        labelParent = new GameObject("StarLabels");
+        labelParent.transform.parent = transform;
 
         //time conversions
         DateTimeOffset utc = AstronomyTime.LocalToUtc(SkySession.Instance.LocalDateTime);
@@ -115,6 +118,17 @@ public class StarLabel : MonoBehaviour
         //Log how many labels were successfully created
         Debug.Log($"Rendered {activeLabels.Count} star labels.");
     }
+        
+    // Enable/disable all labels (Called by settings menu toggle).
+    public void SetLabelsVisible(bool visible)
+    {
+        if (labelParent == null)
+            RenderLabels();
+
+        labelParent.SetActive(visible);
+    }
+
+
     private void CreateLabel(string starName, Vector3 starPosition)
     {
         Vector3 dir = starPosition.normalized;
@@ -134,7 +148,7 @@ public class StarLabel : MonoBehaviour
         // Final label position
         Vector3 labelPosition = basePosition + perpendicular * offsetAmount;
 
-        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, transform);
+        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, labelParent.transform);
 
         TextMesh textMesh = label.GetComponent<TextMesh>();
         textMesh.text = starName;
