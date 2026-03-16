@@ -5,6 +5,7 @@ public class SettingsMenu : MonoBehaviour
 {
     public GameObject settingsPanel;
     public CameraControllerNew cameraController;
+    public GameObject Ground;
 
     private CameraControl controls;
 
@@ -34,5 +35,9 @@ public class SettingsMenu : MonoBehaviour
         {
             cameraController.EnableControls();
         }
+    }
+        public void ToggleGround(bool enabled)
+    {
+        Ground.SetActive(enabled);
     }
 }
