@@ -13,6 +13,7 @@ public class PlanetRender : MonoBehaviour
         public float labelScale = 1f;
         public Color labelColor = Color.yellow;
         private List<GameObject> activeLabels = new List<GameObject>();
+        private GameObject labelParent;
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
     public float skyRadius = 100f;
@@ -35,6 +36,9 @@ public class PlanetRender : MonoBehaviour
             UnityEngine.Debug.LogError("Planet loader missing.");
             return;
         }
+
+        labelParent = new GameObject("PlanetLabels");
+        labelParent.transform.parent = transform;
 
         DateTimeOffset utc = AstronomyTime.LocalToUtc(SkySession.Instance.LocalDateTime);
 
@@ -102,6 +106,15 @@ public class PlanetRender : MonoBehaviour
 
         UnityEngine.Debug.Log($"Rendered {spawnedPlanets.Count} planets.");
     }
+
+    public void SetLabelsVisible(bool visible)
+    {
+        if (labelParent == null)
+            RenderPlanets();
+
+        labelParent.SetActive(visible);
+    }
+
 private void CreateLabel(string planetName, Vector3 planetPosition)
 {
     if (planetLabelPrefab == null)
@@ -119,7 +132,7 @@ private void CreateLabel(string planetName, Vector3 planetPosition)
         planetLabelPrefab,
         labelPosition,
         Quaternion.identity,
-        transform
+        labelParent.transform
     );
 
     TextMesh textMesh = label.GetComponent<TextMesh>();
