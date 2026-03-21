@@ -142,7 +142,6 @@ public class StarLabel : MonoBehaviour
         // Store reference so we can delete it later when re-rendering
         activeLabels.Add(label);
     }
-
     private void ClearLabels()
     {
         // Loop through all previously created labels

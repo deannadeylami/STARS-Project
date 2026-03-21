@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
-using TMPro;
+
+
 
 public class PlanetRender : MonoBehaviour
 {
@@ -16,7 +17,14 @@ public class PlanetRender : MonoBehaviour
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
     public float skyRadius = 100f;
-
+[Header("Planet Materials")]
+public Material mercuryMat;
+public Material venusMat;
+public Material marsMat;
+public Material jupiterMat;
+public Material saturnMat;
+public Material uranusMat;
+public Material neptuneMat;
     private Dictionary<string, GameObject> spawnedPlanets =
         new Dictionary<string, GameObject>();
 
@@ -87,6 +95,13 @@ public class PlanetRender : MonoBehaviour
 
         obj.name = planet.body;
 
+        Material mat = getPlanetMaterial(planet.body);
+        if (mat != null)
+        {
+            Renderer renderer = obj.GetComponentInChildren<Renderer>();
+            renderer.material = mat;
+        }
+
         // === Magnitude scaling ===
         float size = Mathf.Lerp(0.8f, 0.2f, (float)(planet.magnitude / 6.0f));
         obj.transform.localScale = Vector3.one * size;
@@ -144,4 +159,28 @@ private void ClearLabels()
 
     activeLabels.Clear();
 }
+
+Material getPlanetMaterial(string body)
+    {
+        switch(body)
+        {
+            case "Mercury":
+                return mercuryMat;
+            case "Venus":
+                return venusMat;
+            case "Mars":
+                return marsMat;
+            case "Jupiter":
+                return jupiterMat;
+            case "Saturn":
+                return saturnMat;
+            case "Uranus":
+                return uranusMat;
+            case "Neptune":
+                return neptuneMat;
+            default:
+                return null;
+        }
+    }
+
 }
