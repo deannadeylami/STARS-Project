@@ -31,6 +31,8 @@ public class SkyMapRenderer : MonoBehaviour
         RenderSky();
     }
 
+    public Dictionary<int, Vector3> StarPositions = new Dictionary<int, Vector3>();
+
     public void RenderSky()
     {
         if (SkySession.Instance == null)
@@ -119,6 +121,11 @@ public class SkyMapRenderer : MonoBehaviour
             p.startColor = new Color(1f, 1f, 1f, alpha);
 
             particleList.Add(p);
+
+            if (star.hip > 0)
+            {
+                StarPositions[star.hip] = position;
+            }
         }
 
         particles = particleList.ToArray();
