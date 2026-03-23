@@ -6,11 +6,13 @@
 //   rendered entirely in software (CPU pixel rasterisation) and saved as a
 //   JPEG image. No Unity camera, RenderTexture, or GPU readback is used.
 //
-// CHANGES IN THIS VERSION:
-//   1. Uses ConstellationCatalog instead of private constellation parsing.
-//   2. Prevents overlapping/double exports with _isExporting.
-//   3. Removes Debug.Log calls from inside Task.Run.
-//   4. Moves raster work into RasterizeChart() for cleaner structure.
+// NOTES:
+//   - North is rendered at the TOP directly by projection math.
+//   - The pixel buffer is written in Unity's bottom-origin row layout from the
+//     start, so no final image flip is needed.
+//   - Uses ConstellationCatalog instead of private constellation parsing.
+//   - Prevents overlapping exports with _isExporting.
+//   - Includes improved label placement and symbol avoidance.
 // =============================================================================
 
 using System;
@@ -24,10 +26,6 @@ using CosineKitty;
 
 public class StarChartExporter2D : MonoBehaviour
 {
-    // =========================================================================
-    // INSPECTOR FIELDS
-    // =========================================================================
-
     [Header("Dependencies")]
     [Tooltip("The HYGCatalogParser that owns the star lists.")]
     public HYGCatalogParser catalog;
@@ -167,6 +165,15 @@ public class StarChartExporter2D : MonoBehaviour
     [Tooltip("Use a pixel occupancy grid to prevent text labels overlapping.")]
     public bool basicLabelCollisionAvoidance = true;
 
+    [Header("Advanced Label Placement")]
+    [Range(1, 6)] public int labelPlacementRings = 3;
+    [Range(2, 20)] public int labelPlacementStepPx = 6;
+    [Range(0f, 16f)] public float extraConstellationLabelClearancePx = 4f;
+    [Range(0f, 16f)] public float extraStarLabelClearancePx = 3f;
+    [Range(0f, 16f)] public float extraSolarLabelClearancePx = 6f;
+    public bool reserveNamedStarSymbolArea = true;
+    [Range(0f, 12f)] public float namedStarSymbolPaddingPx = 2f;
+
     [Header("Circle Mask")]
     [Tooltip("Prevent constellation line pixels from landing outside the horizon disc.")]
     public bool maskLinesToChartCircle = true;
@@ -177,15 +184,12 @@ public class StarChartExporter2D : MonoBehaviour
     public event Action<string> OnExportComplete;
     public event Action<string> OnExportFailed;
 
-    // =========================================================================
-    // INTERNAL TYPES
-    // =========================================================================
-
     private struct LabelCandidate
     {
         public int x, y;
         public float mag;
         public string name;
+        public float avoidRadiusPx;
     }
 
     private struct PrecomputedBody
@@ -301,11 +305,15 @@ public class StarChartExporter2D : MonoBehaviour
         public bool doPlanetLabels;
         public bool doSunLabel;
         public bool doMoonLabel;
-    }
 
-    // =========================================================================
-    // CACHES / BUFFERS
-    // =========================================================================
+        public int labelPlacementRings;
+        public int labelPlacementStepPx;
+        public float extraConstellationLabelClearancePx;
+        public float extraStarLabelClearancePx;
+        public float extraSolarLabelClearancePx;
+        public bool reserveNamedStarSymbolArea;
+        public float namedStarSymbolPaddingPx;
+    }
 
     private Dictionary<int, StarRecord> _cachedHipLookup;
     private Color32[] _pixelBuffer;
@@ -330,10 +338,6 @@ public class StarChartExporter2D : MonoBehaviour
             Array.Clear(_occBuffer, 0, _occBuffer.Length);
         }
     }
-
-    // =========================================================================
-    // PRECOMPUTE SOLAR SYSTEM BODIES ON MAIN THREAD
-    // =========================================================================
 
     private List<PrecomputedBody> PrecomputeBodies(
         DateTimeOffset utc, double latDeg, double lonDeg, int w, int h)
@@ -410,10 +414,6 @@ public class StarChartExporter2D : MonoBehaviour
 
         return result;
     }
-
-    // =========================================================================
-    // MAIN EXPORT ENTRY
-    // =========================================================================
 
     public async void Export2DChartJpeg()
     {
@@ -552,6 +552,14 @@ public class StarChartExporter2D : MonoBehaviour
                 doPlanetLabels = enablePlanetLabels,
                 doSunLabel = enableSunLabel,
                 doMoonLabel = enableMoonLabel,
+
+                labelPlacementRings = labelPlacementRings,
+                labelPlacementStepPx = labelPlacementStepPx,
+                extraConstellationLabelClearancePx = extraConstellationLabelClearancePx,
+                extraStarLabelClearancePx = extraStarLabelClearancePx,
+                extraSolarLabelClearancePx = extraSolarLabelClearancePx,
+                reserveNamedStarSymbolArea = reserveNamedStarSymbolArea,
+                namedStarSymbolPaddingPx = namedStarSymbolPaddingPx,
             };
 
             RasterStats stats;
@@ -599,10 +607,6 @@ public class StarChartExporter2D : MonoBehaviour
         }
     }
 
-    // =========================================================================
-    // RASTER PIPELINE
-    // =========================================================================
-
     private static RasterStats RasterizeChart(RasterInputs i)
     {
         RasterStats stats = default;
@@ -615,12 +619,12 @@ public class StarChartExporter2D : MonoBehaviour
         float R2 = R * R;
         Vector2 chartCenter = new Vector2(cx, cy);
 
-        // Step 1 — background
+        // 1. Background
         Clear(i.pixels, new Color32(0, 0, 0, 255));
         if (i.doRadialBg)
             DrawRadialBackground(i.pixels, w, h, cx, cy, R, i.bgZenith, i.bgHorizon);
 
-        // Step 2 — altitude rings
+        // 2. Altitude rings
         if (i.doAltRings && i.altRingDegs != null && i.altRingDegs.Length > 0)
         {
             DrawAltitudeRings(
@@ -630,18 +634,20 @@ public class StarChartExporter2D : MonoBehaviour
             );
         }
 
-        // Step 3 — horizon circle
+        // 3. Horizon circle
         if (i.doHorizonCircle)
             DrawCircleOutline(i.pixels, w, h, cx, cy, Mathf.RoundToInt(R), i.horizThick, i.horizCol);
 
-        // Step 4 — pre-project constellation HIP stars (allow below horizon)
+        // 4. Pre-project constellation stars, including below-horizon ones
         Dictionary<int, (Vector2 pix, float mag, double altRad)> hipToPix = null;
         if ((i.doConLines || i.doConLabels) && i.constellations != null && i.constellations.Count > 0)
         {
             var needed = new HashSet<int>();
             foreach (var con in i.constellations)
+            {
                 foreach (int hip in con.UniqueHipIds)
                     needed.Add(hip);
+            }
 
             hipToPix = new Dictionary<int, (Vector2, float, double)>(needed.Count);
             foreach (int hip in needed)
@@ -657,7 +663,27 @@ public class StarChartExporter2D : MonoBehaviour
             }
         }
 
-        // Step 5 — constellation lines
+        // Pre-reserve solar symbol areas so earlier labels (like constellation labels)
+        // stay off top of Sun/Moon/planet glyphs.
+        if (i.doCollision && i.occ != null && i.precomputedBodies != null)
+        {
+            foreach (var body in i.precomputedBodies)
+            {
+                if (!body.aboveHorizon) continue;
+
+                int reserveRadius;
+                if (body.isSun)
+                    reserveRadius = Mathf.CeilToInt(i.sunR + i.symPad + i.extraSolarLabelClearancePx);
+                else if (body.isMoon)
+                    reserveRadius = Mathf.CeilToInt(i.moonR + i.symPad + i.extraSolarLabelClearancePx);
+                else
+                    reserveRadius = Mathf.CeilToInt(i.planetRingR + i.planetRingThick + i.symPad + i.extraSolarLabelClearancePx);
+
+                MarkCircleOccupied(i.occ, w, h, body.px, body.py, reserveRadius);
+            }
+        }
+
+        // 5. Constellation lines
         if (i.doConLines && i.constellations != null && hipToPix != null)
         {
             foreach (var con in i.constellations)
@@ -713,7 +739,7 @@ public class StarChartExporter2D : MonoBehaviour
             }
         }
 
-        // Step 6 — constellation labels
+        // 6. Constellation labels
         if (i.doConLabels && i.constellations != null && hipToPix != null)
         {
             foreach (var con in i.constellations)
@@ -747,23 +773,21 @@ public class StarChartExporter2D : MonoBehaviour
                 float ldy = ly - cy;
                 if (ldx * ldx + ldy * ldy > R2) continue;
 
-                int textW = BitmapFont5x7.MeasureWidth(label, i.conLabelScale);
-                int textH = BitmapFont5x7.MeasureHeight(i.conLabelScale);
-                int tx = Mathf.Clamp(lx - textW / 2, 0, w - textW - 1);
-                int ty = Mathf.Clamp(ly - textH / 2, 0, h - textH - 1);
-
-                if (i.doCollision && RectAnyOccupied(i.occ, w, h, tx, ty, textW, textH)) continue;
-
-                BitmapFont5x7.DrawText(i.pixels, w, h, tx, ty, label, i.conLabelScale, i.conLabelCol);
-
-                if (i.doCollision)
-                    MarkRectOccupied(i.occ, w, h, tx, ty, textW, textH);
-
-                stats.conLabelsDrawn++;
+                if (TryPlaceLabelAroundAnchor(
+                        i.pixels, i.occ, w, h,
+                        lx, ly,
+                        label, i.conLabelScale, i.conLabelCol,
+                        i.extraConstellationLabelClearancePx,
+                        i.doCollision,
+                        i.labelPlacementRings,
+                        i.labelPlacementStepPx))
+                {
+                    stats.conLabelsDrawn++;
+                }
             }
         }
 
-        // Step 7 — stars
+        // 7. Stars
         List<LabelCandidate> starLabelCandidates = i.doStarLabels ? new List<LabelCandidate>(512) : null;
 
         foreach (var star in i.starsSnapshot)
@@ -798,19 +822,33 @@ public class StarChartExporter2D : MonoBehaviour
 
             stats.starsDrawn++;
 
-            if (i.doStarLabels && !string.IsNullOrWhiteSpace(star.proper) && star.mag <= i.maxStarLabelMag)
+            bool wantsStarLabel =
+                i.doStarLabels &&
+                !string.IsNullOrWhiteSpace(star.proper) &&
+                star.mag <= i.maxStarLabelMag;
+
+            if (wantsStarLabel && i.doCollision && i.occ != null && i.reserveNamedStarSymbolArea)
+            {
+                MarkCircleOccupied(
+                    i.occ, w, h, sx, sy,
+                    Mathf.CeilToInt(radius + i.namedStarSymbolPaddingPx)
+                );
+            }
+
+            if (wantsStarLabel)
             {
                 starLabelCandidates.Add(new LabelCandidate
                 {
                     x = sx,
                     y = sy,
                     mag = star.mag,
-                    name = star.proper.Trim()
+                    name = star.proper.Trim(),
+                    avoidRadiusPx = radius + i.extraStarLabelClearancePx
                 });
             }
         }
 
-        // Step 8 — solar system bodies
+        // 8. Solar system bodies
         List<LabelCandidate> solarLabelCandidates =
             (i.doPlanetLabels || i.doSunLabel || i.doMoonLabel)
             ? new List<LabelCandidate>(64)
@@ -836,7 +874,8 @@ public class StarChartExporter2D : MonoBehaviour
                         x = body.px,
                         y = body.py,
                         mag = body.mag,
-                        name = "Sun"
+                        name = "Sun",
+                        avoidRadiusPx = i.sunR + i.symPad + i.extraSolarLabelClearancePx
                     });
                 }
             }
@@ -860,7 +899,8 @@ public class StarChartExporter2D : MonoBehaviour
                         x = body.px,
                         y = body.py,
                         mag = body.mag,
-                        name = "Moon"
+                        name = "Moon",
+                        avoidRadiusPx = i.moonR + i.symPad + i.extraSolarLabelClearancePx
                     });
                 }
             }
@@ -880,13 +920,14 @@ public class StarChartExporter2D : MonoBehaviour
                         x = body.px,
                         y = body.py,
                         mag = body.mag,
-                        name = body.name
+                        name = body.name,
+                        avoidRadiusPx = i.planetRingR + i.planetRingThick + i.symPad + i.extraSolarLabelClearancePx
                     });
                 }
             }
         }
 
-        // Step 9 — cardinal markings
+        // 9. Cardinal markings
         if (i.doCardinalLabels || i.doCardinalTicks)
         {
             DrawCardinalMarkings(
@@ -898,7 +939,7 @@ public class StarChartExporter2D : MonoBehaviour
             );
         }
 
-        // Step 10 — deferred labels (solar first)
+        // 10. Deferred labels: solar first
         if (solarLabelCandidates != null && solarLabelCandidates.Count > 0)
         {
             solarLabelCandidates.Sort((a, b) =>
@@ -912,37 +953,21 @@ public class StarChartExporter2D : MonoBehaviour
                 string text = SanitizeLabel(lc.name);
                 if (string.IsNullOrEmpty(text)) continue;
 
-                int textW = BitmapFont5x7.MeasureWidth(text, i.solarLabelScale);
-                int textH = BitmapFont5x7.MeasureHeight(i.solarLabelScale);
-
-                Vector2Int[] offsets =
+                if (TryPlaceLabelAroundAnchor(
+                        i.pixels, i.occ, w, h,
+                        lc.x, lc.y,
+                        text, i.solarLabelScale, i.solarLabelCol,
+                        lc.avoidRadiusPx,
+                        i.doCollision,
+                        i.labelPlacementRings,
+                        i.labelPlacementStepPx))
                 {
-                    new Vector2Int( 8,           8),
-                    new Vector2Int(-8 - textW,   8),
-                    new Vector2Int( 8,  -8 - textH),
-                    new Vector2Int(-8 - textW,  -8 - textH),
-                    new Vector2Int(10,           0),
-                    new Vector2Int(-10 - textW,  0),
-                };
-
-                foreach (var off in offsets)
-                {
-                    int tx = lc.x + off.x;
-                    int ty = lc.y + off.y;
-
-                    if (tx < 0 || ty < 0 || tx + textW >= w || ty + textH >= h) continue;
-                    if (i.doCollision && RectAnyOccupied(i.occ, w, h, tx, ty, textW, textH)) continue;
-
-                    BitmapFont5x7.DrawText(i.pixels, w, h, tx, ty, text, i.solarLabelScale, i.solarLabelCol);
-                    if (i.doCollision) MarkRectOccupied(i.occ, w, h, tx, ty, textW, textH);
-
                     stats.solarLabelsDrawn++;
-                    break;
                 }
             }
         }
 
-        // Step 10b — star labels
+        // 10b. Star labels
         if (i.doStarLabels && starLabelCandidates != null && starLabelCandidates.Count > 0)
         {
             starLabelCandidates.Sort((a, b) =>
@@ -956,45 +981,82 @@ public class StarChartExporter2D : MonoBehaviour
                 string text = SanitizeLabel(lc.name);
                 if (string.IsNullOrEmpty(text)) continue;
 
-                int textW = BitmapFont5x7.MeasureWidth(text, i.starLabelScale);
-                int textH = BitmapFont5x7.MeasureHeight(i.starLabelScale);
-
-                Vector2Int[] offsets =
+                if (TryPlaceLabelAroundAnchor(
+                        i.pixels, i.occ, w, h,
+                        lc.x, lc.y,
+                        text, i.starLabelScale, i.starLabelCol,
+                        lc.avoidRadiusPx,
+                        i.doCollision,
+                        i.labelPlacementRings,
+                        i.labelPlacementStepPx))
                 {
-                    new Vector2Int( 6,           6),
-                    new Vector2Int(-6 - textW,   6),
-                    new Vector2Int( 6,  -6 - textH),
-                    new Vector2Int(-6 - textW,  -6 - textH),
-                    new Vector2Int( 8,           0),
-                    new Vector2Int(-8 - textW,   0),
-                };
-
-                foreach (var off in offsets)
-                {
-                    int tx = lc.x + off.x;
-                    int ty = lc.y + off.y;
-
-                    if (tx < 0 || ty < 0 || tx + textW >= w || ty + textH >= h) continue;
-                    if (i.doCollision && RectAnyOccupied(i.occ, w, h, tx, ty, textW, textH)) continue;
-
-                    BitmapFont5x7.DrawText(i.pixels, w, h, tx, ty, text, i.starLabelScale, i.starLabelCol);
-                    if (i.doCollision) MarkRectOccupied(i.occ, w, h, tx, ty, textW, textH);
-
                     stats.starLabelsDrawn++;
-                    break;
                 }
             }
         }
 
-        // Step 11 — flip image vertically
-        FlipVerticalInPlace(i.pixels, w, h);
-
         return stats;
     }
 
-    // =========================================================================
-    // CARDINAL MARKINGS
-    // =========================================================================
+    private static bool TryPlaceLabelAroundAnchor(
+        Color32[] pix, bool[] occ, int w, int h,
+        int anchorX, int anchorY,
+        string text, int scale, Color32 color,
+        float clearancePx,
+        bool doCollision,
+        int searchRings,
+        int stepPx)
+    {
+        int textW = BitmapFont5x7.MeasureWidth(text, scale);
+        int textH = BitmapFont5x7.MeasureHeight(scale);
+
+        int baseR = Mathf.Max(1, Mathf.CeilToInt(clearancePx));
+
+        for (int ring = 0; ring < searchRings; ring++)
+        {
+            int r = baseR + ring * stepPx;
+            int halfStep = Mathf.Max(1, stepPx / 2);
+
+            Vector2Int[] offsets =
+            {
+                new Vector2Int( r,                    -textH / 2),
+                new Vector2Int(-r - textW,           -textH / 2),
+                new Vector2Int(-textW / 2,           -r - textH),
+                new Vector2Int(-textW / 2,            r),
+
+                new Vector2Int( r,                   -r - textH),
+                new Vector2Int(-r - textW,          -r - textH),
+                new Vector2Int( r,                    r),
+                new Vector2Int(-r - textW,            r),
+
+                new Vector2Int( r + halfStep,        -textH),
+                new Vector2Int( r + halfStep,         0),
+                new Vector2Int(-r - textW - halfStep, -textH),
+                new Vector2Int(-r - textW - halfStep,  0),
+            };
+
+            foreach (var off in offsets)
+            {
+                int tx = anchorX + off.x;
+                int ty = anchorY + off.y;
+
+                if (tx < 0 || ty < 0 || tx + textW >= w || ty + textH >= h)
+                    continue;
+
+                if (doCollision && RectAnyOccupied(occ, w, h, tx, ty, textW, textH))
+                    continue;
+
+                BitmapFont5x7.DrawText(pix, w, h, tx, ty, text, scale, color);
+
+                if (doCollision)
+                    MarkRectOccupied(occ, w, h, tx, ty, textW, textH);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static void DrawCardinalMarkings(
         Color32[] pix, int w, int h, int cx, int cy, float R,
@@ -1005,15 +1067,15 @@ public class StarChartExporter2D : MonoBehaviour
     {
         var dirs = new List<(float az, string label)>(8)
         {
-            (0f, "N"),
-            (90f, "E"),
+            (0f,   "N"),
+            (90f,  "E"),
             (180f, "S"),
             (270f, "W"),
         };
 
         if (doIntercardinals)
         {
-            dirs.Add((45f, "NE"));
+            dirs.Add((45f,  "NE"));
             dirs.Add((135f, "SE"));
             dirs.Add((225f, "SW"));
             dirs.Add((315f, "NW"));
@@ -1022,8 +1084,8 @@ public class StarChartExporter2D : MonoBehaviour
         foreach (var (az, labelText) in dirs)
         {
             float azRad = az * Mathf.Deg2Rad;
-            float dirX = Mathf.Sin(azRad);
-            float dirY = Mathf.Cos(azRad);
+            float dirX = -Mathf.Sin(azRad);
+            float dirY = -Mathf.Cos(azRad);
 
             float bx = cx + R * dirX;
             float by = cy + R * dirY;
@@ -1046,17 +1108,16 @@ public class StarChartExporter2D : MonoBehaviour
                 int tx = Mathf.Clamp(Mathf.RoundToInt(lcx) - textW / 2, 0, w - textW - 1);
                 int ty = Mathf.Clamp(Mathf.RoundToInt(lcy) - textH / 2, 0, h - textH - 1);
 
-                if (doCollision && RectAnyOccupied(occ, w, h, tx, ty, textW, textH)) continue;
+                if (doCollision && RectAnyOccupied(occ, w, h, tx, ty, textW, textH))
+                    continue;
 
                 BitmapFont5x7.DrawText(pix, w, h, tx, ty, labelText, labelScale, labelCol);
-                if (doCollision) MarkRectOccupied(occ, w, h, tx, ty, textW, textH);
+
+                if (doCollision)
+                    MarkRectOccupied(occ, w, h, tx, ty, textW, textH);
             }
         }
     }
-
-    // =========================================================================
-    // ALTITUDE RINGS
-    // =========================================================================
 
     private static void DrawAltitudeRings(
         Color32[] pix, int w, int h, int cx, int cy, float R,
@@ -1083,10 +1144,6 @@ public class StarChartExporter2D : MonoBehaviour
             }
         }
     }
-
-    // =========================================================================
-    // ASTRONOMY ENGINE WRAPPER
-    // =========================================================================
 
     private static bool TryGetBodyAltAz(
         Body body, AstroTime time, Observer obs, Refraction refr,
@@ -1120,10 +1177,6 @@ public class StarChartExporter2D : MonoBehaviour
         return dict;
     }
 
-    // =========================================================================
-    // PROJECTION HELPERS
-    // =========================================================================
-
     private static bool TryProjectToPixelAboveHorizonOnly(
         StarRecord star, double lstDeg, double latRad, int cx, int cy, float R,
         out int x, out int y, out float altDeg)
@@ -1156,8 +1209,9 @@ public class StarChartExporter2D : MonoBehaviour
         double azRad = ((azSouth + Math.PI) % (2.0 * Math.PI) + 2.0 * Math.PI) % (2.0 * Math.PI);
 
         float pr = (float)((Math.PI / 2.0 - altR) / (Math.PI / 2.0)) * R;
-        x = cx + Mathf.RoundToInt(pr * Mathf.Sin((float)azRad));
-        y = cy + Mathf.RoundToInt(pr * Mathf.Cos((float)azRad));
+
+        x = cx - Mathf.RoundToInt(pr * Mathf.Sin((float)azRad));
+        y = cy - Mathf.RoundToInt(pr * Mathf.Cos((float)azRad));
 
         float dx = x - cx;
         float dy = y - cy;
@@ -1194,7 +1248,11 @@ public class StarChartExporter2D : MonoBehaviour
         double azRad = ((azSouth + Math.PI) % (2.0 * Math.PI) + 2.0 * Math.PI) % (2.0 * Math.PI);
 
         float pr = (float)((Math.PI / 2.0 - altRad) / (Math.PI / 2.0)) * R;
-        pix = new Vector2(cx + pr * Mathf.Sin((float)azRad), cy + pr * Mathf.Cos((float)azRad));
+        pix = new Vector2(
+            cx - pr * Mathf.Sin((float)azRad),
+            cy - pr * Mathf.Cos((float)azRad)
+        );
+
         return true;
     }
 
@@ -1209,17 +1267,14 @@ public class StarChartExporter2D : MonoBehaviour
 
         float pr = Mathf.Clamp01((90f - altDeg) / 90f) * R;
         float azRad = azDeg * Mathf.Deg2Rad;
-        x = Mathf.RoundToInt(cx + pr * Mathf.Sin(azRad));
-        y = Mathf.RoundToInt(cy + pr * Mathf.Cos(azRad));
+
+        x = Mathf.RoundToInt(cx - pr * Mathf.Sin(azRad));
+        y = Mathf.RoundToInt(cy - pr * Mathf.Cos(azRad));
 
         float dx = x - cx;
         float dy = y - cy;
         return dx * dx + dy * dy <= R * R;
     }
-
-    // =========================================================================
-    // SEGMENT CLIPPING
-    // =========================================================================
 
     private static bool ClipSegmentToCircle(
         Vector2 a, Vector2 b, Vector2 c, float R,
@@ -1303,10 +1358,6 @@ public class StarChartExporter2D : MonoBehaviour
         return true;
     }
 
-    // =========================================================================
-    // PIXEL PRIMITIVES
-    // =========================================================================
-
     private static void Clear(Color32[] pix, Color32 c)
     {
         Array.Fill(pix, c);
@@ -1328,7 +1379,7 @@ public class StarChartExporter2D : MonoBehaviour
         {
             float dy = yy - cy;
             float dy2 = dy * dy;
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
 
             for (int xx = minX; xx <= maxX; xx++)
             {
@@ -1358,7 +1409,7 @@ public class StarChartExporter2D : MonoBehaviour
         for (int yy = minY; yy <= maxY; yy++)
         {
             int dy2 = (yy - cy) * (yy - cy);
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
             for (int xx = minX; xx <= maxX; xx++)
             {
                 int d2 = (xx - cx) * (xx - cx) + dy2;
@@ -1384,7 +1435,7 @@ public class StarChartExporter2D : MonoBehaviour
         {
             float dy = yy - cy;
             float dy2 = dy * dy;
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
 
             for (int xx = minX; xx <= maxX; xx++)
             {
@@ -1414,7 +1465,7 @@ public class StarChartExporter2D : MonoBehaviour
         {
             float dy = yy - cy;
             float dy2 = dy * dy;
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
 
             for (int xx = minX; xx <= maxX; xx++)
             {
@@ -1506,7 +1557,7 @@ public class StarChartExporter2D : MonoBehaviour
         for (int yy = minY; yy <= maxY; yy++)
         {
             int dy2 = (yy - cy) * (yy - cy);
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
             for (int xx = minX; xx <= maxX; xx++)
             {
                 int dxv = xx - cx;
@@ -1532,7 +1583,7 @@ public class StarChartExporter2D : MonoBehaviour
         {
             int dyDot = (yy - py) * (yy - py);
             int dyChart = yy - chartCy;
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
 
             for (int xx = minX; xx <= maxX; xx++)
             {
@@ -1548,17 +1599,6 @@ public class StarChartExporter2D : MonoBehaviour
         }
 
         return wrote;
-    }
-
-    private static void FlipVerticalInPlace(Color32[] pix, int w, int h)
-    {
-        for (int y = 0; y < h / 2; y++)
-        {
-            int r1 = y * w;
-            int r2 = (h - 1 - y) * w;
-            for (int x = 0; x < w; x++)
-                (pix[r1 + x], pix[r2 + x]) = (pix[r2 + x], pix[r1 + x]);
-        }
     }
 
     private static void DrawPlanetSymbol(
@@ -1584,7 +1624,7 @@ public class StarChartExporter2D : MonoBehaviour
         for (int yy = minY; yy <= maxY; yy++)
         {
             int dy2 = (yy - cy) * (yy - cy);
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
             for (int xx = minX; xx <= maxX; xx++)
             {
                 int dx = xx - cx;
@@ -1604,7 +1644,7 @@ public class StarChartExporter2D : MonoBehaviour
             if (inside < 0) continue;
 
             float xEdge = a * Mathf.Sqrt(inside);
-            int row = yy * w;
+            int row = (h - 1 - yy) * w;
 
             for (int xx = minX; xx <= maxX; xx++)
             {
@@ -1620,10 +1660,6 @@ public class StarChartExporter2D : MonoBehaviour
             }
         }
     }
-
-    // =========================================================================
-    // STAR COLOUR MAPPING
-    // =========================================================================
 
     private static Color32 BVToColor(float bv, float strength)
     {
@@ -1646,10 +1682,6 @@ public class StarChartExporter2D : MonoBehaviour
 
         return Color32.Lerp(new Color32(255, 255, 255, 255), s, strength);
     }
-
-    // =========================================================================
-    // LABEL COLLISION GRID
-    // =========================================================================
 
     private static bool RectAnyOccupied(bool[] occ, int w, int h, int x, int y, int rw, int rh)
     {
@@ -1709,10 +1741,6 @@ public class StarChartExporter2D : MonoBehaviour
         }
     }
 
-    // =========================================================================
-    // LABEL SANITISER
-    // =========================================================================
-
     private static string SanitizeLabel(string s)
     {
         s = s.Trim().ToUpperInvariant();
@@ -1743,10 +1771,6 @@ public class StarChartExporter2D : MonoBehaviour
 
         return sb.ToString();
     }
-
-    // =========================================================================
-    // EMBEDDED 5x7 FONT
-    // =========================================================================
 
     private static class BitmapFont5x7
     {
@@ -1834,7 +1858,7 @@ public class StarChartExporter2D : MonoBehaviour
                         int yy = py + sy;
                         if ((uint)yy >= (uint)h) continue;
 
-                        int baseRow = yy * w;
+                        int baseRow = (h - 1 - yy) * w;
                         for (int sx = 0; sx < scale; sx++)
                         {
                             int xx = px + sx;

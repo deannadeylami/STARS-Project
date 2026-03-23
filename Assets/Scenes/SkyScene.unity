@@ -5862,36 +5862,99 @@ MonoBehaviour:
   horizonColor:
     serializedVersion: 2
     rgba: 4283453520
+  enableRadialBackground: 1
+  backgroundZenithColor:
+    serializedVersion: 2
+    rgba: 4279633928
+  backgroundHorizonColor:
+    serializedVersion: 2
+    rgba: 4278714882
+  enableAltitudeRings: 1
+  altitudeRingDegrees:
+  - 30
+  - 60
+  altitudeRingColor:
+    serializedVersion: 2
+    rgba: 4281803555
+  altitudeRingThicknessPx: 1
+  enableAltitudeRingLabels: 1
+  altitudeRingLabelFontScale: 1
+  altitudeRingLabelColor:
+    serializedVersion: 2
+    rgba: 4284761670
+  enableCardinalLabels: 1
+  enableIntercardinalLabels: 1
+  cardinalLabelFontScale: 2
+  cardinalLabelColor:
+    serializedVersion: 2
+    rgba: 4288716960
+  cardinalLabelInsetPx: 18
+  enableCardinalTicks: 1
+  cardinalTickLengthPx: 6
+  cardinalTickThicknessPx: 1
+  cardinalTickColor:
+    serializedVersion: 2
+    rgba: 4286085240
   maxStarRadiusPx: 4
   minStarRadiusPx: 1
   minAlpha: 0.15
   maxAlpha: 1
+  enableStarColors: 1
+  starColorStrength: 0.85
+  enableBrightStarGlow: 1
+  glowMagnitudeThreshold: 1.5
+  glowRadiusMultiplier: 2.5
+  glowAlphaMultiplier: 0.22
   enableStarLabels: 1
-  maxStarLabelMagnitude: 2.5
+  maxStarLabelMagnitude: 4
   starLabelFontScale: 1
   starLabelColor:
     serializedVersion: 2
     rgba: 4291348680
+  enablePlanets: 1
+  enableSun: 1
+  enableMoon: 1
+  enablePlanetLabels: 1
+  enableSunLabel: 1
+  enableMoonLabel: 1
+  refraction: 1
+  planetDotRadiusPx: 2.5
+  planetRingRadiusPx: 5.5
+  planetRingThicknessPx: 1
+  planetColor:
+    serializedVersion: 2
+    rgba: 4288729820
+  planetMagnitudeLimit: 99
+  sunRadiusPx: 7
+  sunColor:
+    serializedVersion: 2
+    rgba: 4286110975
+  moonRadiusPx: 8
+  moonLitColor:
+    serializedVersion: 2
+    rgba: 4292664540
+  moonDarkColor:
+    serializedVersion: 2
+    rgba: 4282795590
+  solarLabelFontScale: 2
+  solarLabelColor:
+    serializedVersion: 2
+    rgba: 4288729820
+  symbolCollisionPaddingPx: 2
   enableConstellationLines: 1
-  constellationsCsvFileName: constellations_lines.csv
+  enableConstellationLabels: 1
+  constellationsFileName: constellations_with_names.txt
   constellationLineColor:
     serializedVersion: 2
     rgba: 2697492560
   constellationLineThicknessPx: 1
-  constellationLineMagLimit: 6.5
-  maxConstellationLineLengthFracOfRadius: 0.45
-  enableConstellationLabels: 1
+  constellationLineMagLimit: 10
   constellationLabelFontScale: 2
   constellationLabelColor:
     serializedVersion: 2
     rgba: 3539973260
-  constellationLabelRadialOffsetPx: 16
-  constellationLabelLeaderLines: 1
-  constellationLeaderLineColor:
-    serializedVersion: 2
-    rgba: 1862251660
-  constellationLeaderLineThicknessPx: 1
   basicLabelCollisionAvoidance: 1
+  maskLinesToChartCircle: 1
   folderName: StarMapExports
 --- !u!4 &1878757777
 Transform:
