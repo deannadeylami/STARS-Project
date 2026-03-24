@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 // Manage settings menu.
 public class SettingsMenu : MonoBehaviour
@@ -23,6 +24,13 @@ public class SettingsMenu : MonoBehaviour
     private void OnCancel(InputAction.CallbackContext context)
     {
         ToggleMenu();
+    }
+
+    // Cleans up input events when object is destroyed (returning to main menu destroys settings menu).
+    private void OnDestroy()
+    {
+        controls.UI.Cancel.performed -= OnCancel;
+        controls.Disable();
     }
 
     // Opens/closes settings menu, and enables/disables camera controls.
@@ -77,4 +85,17 @@ public class SettingsMenu : MonoBehaviour
             horizonToggle.interactable = true;
         }
     }
+
+    // Close out the application.
+    public void QuitApplication()
+    {
+        Application.Quit();
+    }
+    
+    // Return to main menu screen.
+    public void ReturnToMainMenu()
+    {
+        SceneManager.LoadScene("Title");
+    }
+
 }

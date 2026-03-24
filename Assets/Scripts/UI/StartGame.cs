@@ -19,7 +19,7 @@ public class StartGame : MonoBehaviour
         {
             double defaultLat = 40.0;
             double defaultLon = -74.0;
-            DateTime defaultDateTime = new DateTime(2024, 6, 1, 22, 0, 0);
+            DateTime defaultDateTime = new DateTime(2025, 1, 18, 18, 30, 0);
 
             SkySession.Instance.SetInputs(
                 defaultLat,
@@ -32,5 +32,11 @@ public class StartGame : MonoBehaviour
         }
 
         SceneManager.LoadScene("SkyScene");
+    }
+
+    // Close out the application.
+    public void QuitApplication()
+    {
+        Application.Quit();
     }
 }

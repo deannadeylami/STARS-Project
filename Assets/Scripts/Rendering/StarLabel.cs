@@ -189,4 +189,8 @@ public class StarLabel : MonoBehaviour
         labelParent.SetActive(labelVisible); 
         
     }
+    public void QuitApplication()
+    {
+        Application.Quit();
+    }
 }
