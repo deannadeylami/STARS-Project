@@ -15,6 +15,14 @@
 //   - Includes improved label placement and symbol avoidance.
 // =============================================================================
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
+#if !UNITY_EDITOR && (UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX)
+using SFB;
+#endif
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -415,6 +423,33 @@ public class StarChartExporter2D : MonoBehaviour
         return result;
     }
 
+    private static bool TryGetSavePath(string defaultFileName, out string savePath)
+    {
+        savePath = null;
+
+    #if UNITY_EDITOR
+        savePath = EditorUtility.SaveFilePanel(
+            "Save Star Chart",
+            "",
+            defaultFileName,
+            "jpg"
+        );
+        return !string.IsNullOrWhiteSpace(savePath);
+
+    #elif UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX
+        // Requires StandaloneFileBrowser plugin
+        savePath = StandaloneFileBrowser.SaveFilePanel(
+            "Save Star Chart",
+            "",
+            defaultFileName,
+            "jpg"
+        );
+        return !string.IsNullOrWhiteSpace(savePath);
+
+    #else
+        return false;
+    #endif
+    }
     public async void Export2DChartJpeg()
     {
         if (_isExporting)
@@ -450,7 +485,6 @@ public class StarChartExporter2D : MonoBehaviour
             double latDeg = SkySession.Instance.LatitudeDeg;
             double lonDeg = SkySession.Instance.LongitudeDeg;
             string dtStr = SkySession.Instance.LocalDateTime.ToString("yyyyMMdd_HHmm", CultureInfo.InvariantCulture);
-            string persistentPath = Application.persistentDataPath;
 
             var starsSnapshot = new List<StarRecord>(catalog.VisibleStarsMag6);
             float magLimit = catalog.magnitudeLimit;
@@ -580,9 +614,19 @@ public class StarChartExporter2D : MonoBehaviour
             byte[] jpg = tex.EncodeToJPG(jpegQuality);
             Destroy(tex);
 
-            string dir = Path.Combine(persistentPath, folderName);
-            Directory.CreateDirectory(dir);
-            string file = Path.Combine(dir, $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg");
+            string defaultFileName = $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg";
+
+            if (!TryGetSavePath(defaultFileName, out string file))
+            {
+                Debug.Log("[StarChartExporter2D] Save cancelled or unsupported on this platform.");
+                OnExportFailed?.Invoke("Save cancelled.");
+                return;
+            }
+
+            string dir = Path.GetDirectoryName(file);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+
             File.WriteAllBytes(file, jpg);
 
             Debug.Log(
