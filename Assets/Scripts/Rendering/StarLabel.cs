@@ -10,6 +10,7 @@ public class StarLabel : MonoBehaviour
     public HYGCatalogParser catalog;
     public float skyRadius = 100f;
     public GameObject starLabelPrefab;
+    private GameObject labelParent; //Parent object for all labels
 
     [Header("Label Settings")]
     public float labelScale = 1f;   // Constant size for all labels
@@ -37,7 +38,9 @@ public class StarLabel : MonoBehaviour
             return;
         }
 
-        ClearLabels(); //Remove previously created labels before re-rendering
+        // Create parent for labels
+        labelParent = new GameObject("StarLabels");
+        labelParent.transform.parent = transform;
 
         //time conversions
         DateTimeOffset utc = AstronomyTime.LocalToUtc(SkySession.Instance.LocalDateTime);
@@ -115,31 +118,46 @@ public class StarLabel : MonoBehaviour
         //Log how many labels were successfully created
         Debug.Log($"Rendered {activeLabels.Count} star labels.");
     }
+        
+    // Enable/disable all labels (Called by settings menu toggle).
+    public void SetLabelsVisible(bool visible)
+    {
+        if (labelParent == null)
+            RenderLabels();
+
+        labelParent.SetActive(visible);
+    }
+
+
     private void CreateLabel(string starName, Vector3 starPosition)
     {
-        // Move label slightly outward from the sky dome
-        // This prevents z-fighting with the star particles
-        Vector3 labelPosition = starPosition.normalized * (skyRadius + 1.5f);
+        Vector3 dir = starPosition.normalized;
 
-        // Instantiate the label prefab at computed position
-        // Quaternion.identity = no rotation
-        // transform = make this script's GameObject the parent
-        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, transform);
+        // Base position slightly outside sky dome
+        Vector3 basePosition = dir * (skyRadius + 1.5f);
 
-        // Get the TextMesh component from the prefab
+        // Create perpendicular direction for offset
+        Vector3 perpendicular = Vector3.Cross(dir, Vector3.up).normalized;
+
+        // If star is near vertical this prevents zero vector
+        if (perpendicular == Vector3.zero)
+            perpendicular = Vector3.Cross(dir, Vector3.right).normalized;
+
+        float offsetAmount = 2.0f;
+
+        // Final label position
+        Vector3 labelPosition = basePosition + perpendicular * offsetAmount;
+
+        GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, labelParent.transform);
+
         TextMesh textMesh = label.GetComponent<TextMesh>();
-
-        // Set the displayed text to the star's proper name
         textMesh.text = starName;
 
-        // Apply constant uniform scale to all labels
         label.transform.localScale = Vector3.one * labelScale;
 
-        // Flip the labels and have them face the camera.
         label.transform.LookAt(Camera.main.transform);
         label.transform.Rotate(0, 180f, 0);
 
-        // Store reference so we can delete it later when re-rendering
         activeLabels.Add(label);
     }
     private void ClearLabels()

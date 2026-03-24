@@ -77,5 +77,16 @@ public class CameraControllerNew : MonoBehaviour
         zoomInput = context.ReadValue<float>();
         Debug.Log(zoomInput);
     }
+
+    public void EnableControls()
+    {
+    controls.Enable();
+    }
+
+    public void DisableControls()
+    {
+        controls.Disable();
+    }
+
 }
 
