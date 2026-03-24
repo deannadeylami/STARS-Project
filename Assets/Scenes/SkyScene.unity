@@ -156,6 +156,13 @@ MonoBehaviour:
   planetLoader: {fileID: 40056113}
   planetPrefab: {fileID: 775357564}
   skyRadius: 100
+  mercuryMat: {fileID: 2100000, guid: e2d7a0febf7f33a4c823b8b687214d85, type: 2}
+  venusMat: {fileID: 2100000, guid: 5dffeacac0240de45bf092e19e346ab3, type: 2}
+  marsMat: {fileID: 2100000, guid: 75d9bf59ba7c413449ccadc38eee6848, type: 2}
+  jupiterMat: {fileID: 2100000, guid: 1a256f4f619a0524188256aabcfb9ca4, type: 2}
+  saturnMat: {fileID: 2100000, guid: d4b2fe9bebb30a04db776d84f3c0c782, type: 2}
+  uranusMat: {fileID: 2100000, guid: 53b92419cdb0c1446a7f0685ee6b719a, type: 2}
+  neptuneMat: {fileID: 2100000, guid: 6f4597bf4a37e0841995be7f8041ccbd, type: 2}
 --- !u!114 &40056113
 MonoBehaviour:
   m_ObjectHideFlags: 0
