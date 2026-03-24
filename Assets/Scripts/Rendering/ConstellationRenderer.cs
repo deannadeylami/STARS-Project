@@ -6,7 +6,7 @@ public class ConstellationRenderer : MonoBehaviour
     public Material lineMaterial;
     public float lineWidth = 0.05f;
     public float labelOffset = 2f;
-    public float labelSize = 2f;
+    public float labelSize = 1f;
     public Color labelColor = Color.blue; 
     public SkyMapRenderer skyMap;
     void Start()
