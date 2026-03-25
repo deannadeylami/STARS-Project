@@ -25,6 +25,7 @@ public class CelestialEphemerisUnity : MonoBehaviour
     private readonly Dictionary<string, string> Moon = new Dictionary<string, string>
     {
         {"Moon", "301"},
+        {"Sun", "10"},
     };
 
         private double latitude;
@@ -53,7 +54,7 @@ public class CelestialEphemerisUnity : MonoBehaviour
         string center = $"{latitude},{longitude},{altitude}@399";
 
         var csvBuilder = new StringBuilder();
-        csvBuilder.AppendLine("Body,Date,RA_deg (App),Dec_deg (App),X(Sat-Prim)_Arcsec,Y(Sat-Prim)_Arcsec,X(Sat-Prim)_Rad,Y(Sat-Prim)_Rad,Distance_AU,Mag");
+        csvBuilder.AppendLine("Body,Date,RA_deg (App),Dec_deg (App),X(Sat-Prim)_Arcsec,Y(Sat-Prim)_Arcsec,X(Sat-Prim)_Rad,Y(Sat-Prim)_Rad,Distance_AU,Mag,Illum%");
 
         foreach (var body in celestialBodies)
         {
@@ -66,7 +67,7 @@ public class CelestialEphemerisUnity : MonoBehaviour
         foreach (var body in Moon)
         {
             Debug.Log($"Querying Horizons for {body.Key}...");
-            string url = BuildHorizonsUrl(body.Value, center, startDate, stopDate, "1,2,3,9,20");
+            string url = BuildHorizonsUrl(body.Value, center, startDate, stopDate, "1,2,3,9,10,20");
             yield return StartCoroutine(FetchAndParse(url, body.Key, csvBuilder, isMoon: true));
         }
 
@@ -198,8 +199,9 @@ public class CelestialEphemerisUnity : MonoBehaviour
                     yArcsec.ToString("F3", CultureInfo.InvariantCulture),
                     xRad.ToString(CultureInfo.InvariantCulture),
                     yRad.ToString(CultureInfo.InvariantCulture),
-                    parts[11].Trim(),
-                    parts[9].Trim()
+                    parts[12].Trim(),
+                    parts[9].Trim(),
+                    parts[11].Trim()
                 );
                 csvBuilder.AppendLine(csvLine);
             }
