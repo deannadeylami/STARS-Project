@@ -1,10 +1,14 @@
+//Constellation Labels 
+
 using UnityEngine;
+using System.Collections.Generic;
 
 public class ConstellationRenderer : MonoBehaviour
 {
     public string fileName = "constellations_with_names.txt";
     public Material lineMaterial;
     public float lineWidth = 0.05f;
+    private List<GameObject> labels = new List<GameObject> ();
     public float labelOffset = 2f;
     public float labelSize = 1f;
     public Color labelColor = Color.blue; 
@@ -19,10 +23,6 @@ public class ConstellationRenderer : MonoBehaviour
 
         var catalog = ConstellationCatalog.LoadFromStreamingAssets(fileName);
 
-        foreach (var constellation in catalog.All)
-        {
-            DrawConstellation(constellation);
-        }
         foreach (var constellation in catalog.All)
         {
             DrawConstellation(constellation);
@@ -53,37 +53,42 @@ public class ConstellationRenderer : MonoBehaviour
             lr.useWorldSpace = true;
         }
     }
-    void CreateLabel(ConstellationCatalog.Constellation c)
+    void CreateLabel(ConstellationCatalog.Constellation c) 
     {
-        Vector3 sum = Vector3.zero;
-        int count = 0;
-
+        Vector3 sum = Vector3.zero; int count = 0; 
         foreach (int hip in c.UniqueHipIds)
-        {
+        { 
             if (skyMap.StarPositions.TryGetValue(hip, out var pos))
-            {
-                sum += pos;
-                count++;
-            }
-        }
-
+            { 
+                sum += pos; count++; 
+            } 
+        } 
         if (count == 0) return;
-
-        Vector3 center = sum / count;
-
-        // Push label slightly outward so it doesn't overlap lines
-        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset);
-
+        Vector3 center = sum / count; 
+        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset); 
         GameObject textObj = new GameObject($"{c.Abbrev}_Label");
-        textObj.transform.parent = this.transform;
-        textObj.transform.position = labelPos;
-
+        textObj.transform.parent = this.transform; 
+        textObj.transform.position = labelPos; 
         var textMesh = textObj.AddComponent<TextMesh>();
         textMesh.text = string.IsNullOrEmpty(c.Name) ? c.Abbrev : c.Name;
-        textMesh.characterSize = labelSize;
-        textMesh.color = labelColor;
-        textMesh.anchor = TextAnchor.MiddleCenter;
+        textMesh.characterSize = labelSize; 
+        textMesh.color = labelColor; 
+        textMesh.anchor = TextAnchor.MiddleCenter; 
+        labels.Add(textObj);
     }
+    void Update()
+    {
+        if (Camera.main == null) return;
+
+        foreach (var label in labels)
+        {
+            if (label == null) continue;
+
+            label.transform.LookAt(Camera.main.transform);
+            label.transform.Rotate(0, 180, 0);
+        }
+    }
+
 
 }
 
