@@ -17,6 +17,8 @@ public class PlanetRender : MonoBehaviour
         private GameObject labelParent;
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
+    public bool showBelowHorizon = false;
+    private bool labelVisible = true;
     public float skyRadius = 100f;
 [Header("Planet Materials")]
 public Material mercuryMat;
@@ -75,7 +77,7 @@ public Material neptuneMat;
             double altRad = Math.Asin(sinAlt);
 
             // === MATCH SKYMAP: skip below horizon ===
-            if (altRad <= 0)
+            if (!showBelowHorizon && altRad <= 0)
                 continue;
             double cosAz =
                 (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
@@ -124,6 +126,7 @@ public Material neptuneMat;
 
     public void SetLabelsVisible(bool visible)
     {
+        labelVisible = visible;
         if (labelParent == null)
             RenderPlanets();
 
@@ -194,6 +197,15 @@ Material getPlanetMaterial(string body)
             default:
                 return null;
         }
+    }
+
+    public void OnHorizonToggleChanged(bool value)
+    {
+        showBelowHorizon = value;
+        RenderPlanets();
+        
+        // If planet labels were hidden, make sure they stay hidden when toggling planets under the horizon.
+        labelParent.SetActive(labelVisible); 
     }
 
 }
