@@ -23,6 +23,7 @@ public class PlanetRender : MonoBehaviour
 [Header("Planet Materials")]
 public Material mercuryMat;
 public Material venusMat;
+public Material moonMat;
 public Material marsMat;
 public Material jupiterMat;
 public Material saturnMat;
@@ -184,6 +185,8 @@ Material getPlanetMaterial(string body)
                 return mercuryMat;
             case "Venus":
                 return venusMat;
+            case "Moon":
+                return moonMat;
             case "Mars":
                 return marsMat;
             case "Jupiter":
