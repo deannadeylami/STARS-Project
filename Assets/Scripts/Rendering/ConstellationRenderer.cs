@@ -89,6 +89,9 @@ public class ConstellationRenderer : MonoBehaviour
         }
     }
 
-
+    public void SetConstellationsVisible(bool visible)
+    {
+        gameObject.SetActive(visible);
+    }
 }
 
