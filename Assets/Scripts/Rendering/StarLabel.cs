@@ -11,6 +11,8 @@ public class StarLabel : MonoBehaviour
     public float skyRadius = 100f;
     public GameObject starLabelPrefab;
     private GameObject labelParent; //Parent object for all labels
+    public bool showBelowHorizon = false; //Toggle for whether stars below the horizon should be rendered.
+    public bool labelVisible = true;
 
     [Header("Label Settings")]
     public float labelScale = 1f;   // Constant size for all labels
@@ -81,8 +83,9 @@ public class StarLabel : MonoBehaviour
             sinAlt = Math.Clamp(sinAlt, -1.0, 1.0);
             double altRad = Math.Asin(sinAlt);
 
-            //If altitude is <= 0 (at or below horizon), skip this star
-            if (altRad <= HorizonEpsRad)
+            // Toggle is off, skip star labels at below the horizon.
+            // Toggle is on, allow them to render.
+            if (!showBelowHorizon && altRad <= HorizonEpsRad)
                 continue;
 
             //Azimuth Calculation
@@ -122,6 +125,8 @@ public class StarLabel : MonoBehaviour
     // Enable/disable all labels (Called by settings menu toggle).
     public void SetLabelsVisible(bool visible)
     {
+        labelVisible = visible;
+
         if (labelParent == null)
             RenderLabels();
 
@@ -171,5 +176,21 @@ public class StarLabel : MonoBehaviour
         }
         // Clear list so we can repopulate it cleanly
         activeLabels.Clear();
+    }
+    
+    // Called by "Generate Stars under Horizon toggle."
+    public void OnHorizonToggleChanged(bool value)
+    {
+        showBelowHorizon = value;
+        ClearLabels();
+        RenderLabels();
+        
+        // If star labels were hidden, make sure they stay hidden when toggling stars under the horizon.
+        labelParent.SetActive(labelVisible); 
+        
+    }
+    public void QuitApplication()
+    {
+        Application.Quit();
     }
 }

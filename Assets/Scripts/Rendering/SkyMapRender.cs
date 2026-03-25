@@ -14,7 +14,11 @@ public class SkyMapRenderer : MonoBehaviour
 
     // Small tolerance to avoid jitter right at the horizon
     private const double HorizonEpsRad = 1e-6;
+    //Toggle for whether stars below the horizon should be rendered
+    public bool showBelowHorizon = false; 
+    public GameObject groundObject;
 
+    
     void Start()
     {
         ps = GetComponent<ParticleSystem>();
@@ -75,8 +79,10 @@ public class SkyMapRenderer : MonoBehaviour
 
             double altRad = Math.Asin(sinAlt);
 
-            // Skip stars under horizon (with tiny epsilon)
-            if (altRad <= HorizonEpsRad) continue;
+            // Toggle is off, skip stars at below the horizon.
+            // Toggle is on, allow them to render.
+            if (!showBelowHorizon && altRad <= HorizonEpsRad) 
+                continue;
 
             // This gives azimuth measured from SOUTH; convert to from NORTH by adding pi.
             double sinHA = Math.Sin(haRad);
@@ -132,5 +138,11 @@ public class SkyMapRenderer : MonoBehaviour
         ps.SetParticles(particles, particles.Length);
 
         Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
+    }
+
+    public void OnHorizonToggleChanged(bool value)
+    {
+        showBelowHorizon = value;
+        RenderSky();
     }
 }
