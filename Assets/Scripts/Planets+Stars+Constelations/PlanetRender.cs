@@ -59,7 +59,6 @@ UnityEngine.Vector3 sunDir = UnityEngine.Vector3.zero;
 
         double latitudeRad =
             AstronomyTime.DegToRad(SkySession.Instance.LatitudeDeg);
-UnityEngine.Vector3 sunDir = UnityEngine.Vector3.zero;
 
 foreach (Planet planet in planetLoader.planets)
 {
