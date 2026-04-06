@@ -13,7 +13,7 @@
 //   - Uses ConstellationCatalog instead of private constellation parsing.
 //   - Prevents overlapping exports with _isExporting.
 //   - Includes improved label placement and symbol avoidance.
-//   - Print export (Export2DChartPrint) uses an ink-friendly inverted palette,
+//   - Four export buttons: JPEG square, PNG square, JPEG print, PNG print.
 //     centres the chart on an 8.5x11 page at the chosen DPI, and adds a
 //     STARS title + observation metadata header above the chart.
 // =============================================================================
@@ -40,6 +40,15 @@ public class StarChartExporter2D : MonoBehaviour
     [Header("Dependencies")]
     [Tooltip("The HYGCatalogParser that owns the star lists.")]
     public HYGCatalogParser catalog;
+
+    [Tooltip("The scene StarLabel component – export star label toggle mirrors this.")]
+    public StarLabel starLabelRenderer;
+
+    [Tooltip("The scene PlanetRender component – export planet label toggle mirrors this.")]
+    public PlanetRender planetRenderer;
+
+    [Tooltip("The scene ConstellationRenderer – export constellation toggles mirror this.")]
+    public ConstellationRenderer constellationRenderer;
 
     // -----------------------------------------------------------------------
     // JPEG Export
@@ -71,6 +80,15 @@ public class StarChartExporter2D : MonoBehaviour
 
     [Tooltip("Invert chart colours for ink-friendly printing (white bg, black stars, dark lines).")]
     public bool invertPrintColors = true;
+
+    [Header("Legend & Magnitude Key")]
+    [Tooltip("Draw a titled, bordered legend box showing visible solar system bodies.")]
+    public bool enableLegend = true;
+    [Tooltip("Draw a magnitude scale key showing relative star dot sizes.")]
+    public bool enableMagnitudeKey = true;
+    [Tooltip("Number of magnitude steps shown in the key (e.g. 5 = mag 0,1,2,3,4).")]
+    [Range(3, 6)] public int magnitudeKeySteps = 5;
+    public Color32 legendBorderColor = new Color32(100, 100, 120, 255);
 
     // -----------------------------------------------------------------------
     // Chart Style – shared between both exports
@@ -154,8 +172,28 @@ public class StarChartExporter2D : MonoBehaviour
     [Range(1f, 10f)]  public float planetDotRadiusPx  = 2.5f;
     [Range(2f, 16f)]  public float planetRingRadiusPx = 5.5f;
     [Range(1, 4)]     public int   planetRingThicknessPx = 1;
-    public Color32 planetColor = new Color32(220, 210, 160, 255);
+    [Tooltip("Skip planets dimmer than this magnitude. Set 99 to draw all.")]
     public float planetMagnitudeLimit = 99f;
+
+    [Header("Per-Planet Colors")]
+    [Tooltip("These colors are used for both the JPEG and print exports.")]
+    public Color32 mercuryColor = new Color32(180, 170, 160, 255);   // grey
+    public Color32 venusColor   = new Color32(255, 230, 160, 255);   // warm yellow-white
+    public Color32 marsColor    = new Color32(210,  80,  40, 255);   // red-orange
+    public Color32 jupiterColor = new Color32(210, 160, 100, 255);   // tan-orange
+    public Color32 saturnColor  = new Color32(220, 195, 120, 255);   // golden yellow
+    public Color32 uranusColor  = new Color32(130, 220, 220, 255);   // cyan
+    public Color32 neptuneColor = new Color32( 60, 100, 220, 255);   // deep blue
+
+    [Header("Saturn Ring Style")]
+    [Range(1.4f, 4f)]
+    [Tooltip("Ring outer radius as a multiple of the planet dot radius.")]
+    public float saturnRingRadiusMultiplier = 2.2f;
+    [Range(0.2f, 0.7f)]
+    [Tooltip("Vertical squash of the ring ellipse (0 = flat line, 1 = circle).")]
+    public float saturnRingAxisRatio = 0.38f;
+    [Range(1, 3)]
+    public int saturnRingThicknessPx = 1;
 
     [Header("Sun Style")]
     [Range(2f, 16f)] public float sunRadiusPx = 7f;
@@ -226,7 +264,7 @@ public class StarChartExporter2D : MonoBehaviour
         public bool   aboveHorizon;
         public int    px, py;
         public float  mag;
-        public bool   isSun, isMoon;
+        public bool   isSun, isMoon, isSaturn;
         public float  moonPhaseFraction;
         public bool   moonWaxing;
     }
@@ -321,10 +359,13 @@ public class StarChartExporter2D : MonoBehaviour
         public bool    doCollision;
 
         // --- solar system ---
-        public float   planetDotR;
-        public float   planetRingR;
-        public int     planetRingThick;
-        public Color32 planetCol;
+        public float     planetDotR;
+        public float     planetRingR;
+        public int       planetRingThick;
+        public Color32[] planetColors;      // indexed by PlanetColorIndex()
+        public float     saturnRingRadMul;
+        public float     saturnRingAxisRatio;
+        public int       saturnRingThick;
         public float   sunR;
         public Color32 sunCol;
         public float   moonR;
@@ -361,6 +402,50 @@ public class StarChartExporter2D : MonoBehaviour
     private Color32[] _pixelBuffer;
     private bool[]    _occBuffer;
     private bool      _isExporting;
+
+    // -----------------------------------------------------------------------
+    // Unity lifecycle
+    // -----------------------------------------------------------------------
+    private void Start()
+    {
+        // Mirror the current live scene state immediately so the first export
+        // reflects whatever the user already has toggled in the 3D view.
+        if (starLabelRenderer != null)
+        {
+            enableStarLabels = starLabelRenderer.labelVisible;
+            starLabelRenderer.OnLabelsVisibilityChanged += visible =>
+            {
+                enableStarLabels = visible;
+            };
+        }
+
+        if (planetRenderer != null)
+        {
+            // labelVisible is private on PlanetRender; default to true and let
+            // the first user toggle correct it automatically.
+            enablePlanetLabels = true;
+            enableMoonLabel    = true;
+            planetRenderer.OnLabelsVisibilityChanged += visible =>
+            {
+                enablePlanetLabels = visible;
+                enableMoonLabel    = visible;
+            };
+        }
+
+        if (constellationRenderer != null)
+        {
+            // SetConstellationsVisible toggles the whole GameObject, so both
+            // lines and labels are covered by a single event.
+            bool conVisible = constellationRenderer.gameObject.activeSelf;
+            enableConstellationLines  = conVisible;
+            enableConstellationLabels = conVisible;
+            constellationRenderer.OnConstellationsVisibilityChanged += visible =>
+            {
+                enableConstellationLines  = visible;
+                enableConstellationLabels = visible;
+            };
+        }
+    }
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -438,7 +523,7 @@ public class StarChartExporter2D : MonoBehaviour
                 try { mag = Astronomy.Illumination(body, astroTime).mag; } catch { }
                 if (mag > planetMagnitudeLimit) continue;
 
-                var b = new PrecomputedBody { name = name, mag = (float)mag };
+                var b = new PrecomputedBody { name = name, mag = (float)mag, isSaturn = (name == "Saturn") };
                 if (TryGetBodyAltAz(body, astroTime, observer, refr, out double alt, out double az)
                     && alt > 0.0
                     && TryProjectAltAzToPixel((float)alt, (float)az, cx, cy, R, out b.px, out b.py))
@@ -471,9 +556,29 @@ public class StarChartExporter2D : MonoBehaviour
     }
 
     // =======================================================================
-    // PUBLIC BUTTON 1 – JPEG export with STARS title + metadata header
+    // PUBLIC BUTTONS – one per format, each calls the shared private helper
     // =======================================================================
-    public async void Export2DChartJpeg()
+
+    /// <summary>Button 1 – Square chart exported as JPEG.</summary>
+    public async void Export2DChartJpeg()       => await DoExportSquare(asPng: false);
+
+    /// <summary>Button 2 – Square chart exported as lossless PNG.</summary>
+    public async void Export2DChartPng()        => await DoExportSquare(asPng: true);
+
+    /// <summary>Button 3 – 8.5×11 print page exported as JPEG.</summary>
+    public async void Export2DChartPrintJpeg()  => await DoExportPrint(asPng: false);
+
+    /// <summary>Button 4 – 8.5×11 print page exported as lossless PNG.</summary>
+    public async void Export2DChartPrintPng()   => await DoExportPrint(asPng: true);
+
+    // =======================================================================
+    // PRIVATE HELPERS
+    // =======================================================================
+
+    // -----------------------------------------------------------------------
+    // Square / JPEG canvas export
+    // -----------------------------------------------------------------------
+    private async Task DoExportSquare(bool asPng)
     {
         if (_isExporting)
         {
@@ -492,22 +597,17 @@ public class StarChartExporter2D : MonoBehaviour
                     out Dictionary<int, StarRecord> hipLookup))
                 return;
 
-            // ---- Header sizing (same logic as print, scaled to pixel density) ----
-            // Base the font scale on the shorter canvas dimension so it looks
-            // proportional at any resolution (e.g. scale 4 at 2048 px).
-            int shortSide = Mathf.Min(width, height);
+            int shortSide      = Mathf.Min(width, height);
             int titleFontScale = Mathf.Clamp(shortSide / 512, 2, 6);
             int metaFontScale  = Mathf.Clamp(shortSide / 768, 1, 4);
-            int marginPx       = shortSide / 32;   // ~64 px at 2048
+            int marginPx       = shortSide / 32;
 
             int titleH  = BitmapFont5x7.MeasureHeight(titleFontScale);
             int metaH   = BitmapFont5x7.MeasureHeight(metaFontScale);
             int headerH = marginPx + titleH + 6 * metaFontScale + metaH + 8 * metaFontScale;
 
-            // ---- Chart disc: centred horizontally, shifted down by header ----
-            int availH      = height - headerH - marginPx;   // leave bottom margin too
-            int chartDiam   = Mathf.Min(width - 2 * marginPx, availH);
-            chartDiam       = Mathf.Max(chartDiam, 64);
+            int availH    = height - headerH - marginPx;
+            int chartDiam = Mathf.Max(64, Mathf.Min(width - 2 * marginPx, availH));
             float chartRadius = chartDiam / 2f - 4f;
 
             int chartCx = width  / 2;
@@ -519,14 +619,11 @@ public class StarChartExporter2D : MonoBehaviour
             var pixels = _pixelBuffer;
             var occ    = basicLabelCollisionAvoidance ? _occBuffer : null;
 
-            // Dark background for the whole canvas
             Array.Fill(pixels, new Color32(0, 0, 0, 255));
 
             var inputs = BuildRasterInputs(
-                pixels, occ,
-                width, height,
-                cx: chartCx, cy: chartCy,
-                chartRadius: chartRadius,
+                pixels, occ, width, height,
+                cx: chartCx, cy: chartCy, chartRadius: chartRadius,
                 lstDeg, latRad, starsSnapshot, magLimit,
                 constellations, precomputedBodies, hipLookup,
                 invertColors: false);
@@ -540,48 +637,28 @@ public class StarChartExporter2D : MonoBehaviour
                 return;
             }
 
-            // ---- Header text (main thread, after rasterisation) ----
-            // Title
-            {
-                string title = "STARS";
-                int tw = BitmapFont5x7.MeasureWidth(title, titleFontScale);
-                int tx = (width - tw) / 2;
-                int ty = marginPx - 30;
-                BitmapFont5x7.DrawText(pixels, width, height, tx, ty, title,
-                    titleFontScale, new Color32(230, 230, 230, 255));
-            }
-            // Metadata
-            {
-                string localStr = SkySession.Instance.LocalDateTime.ToString(
-                    "yyyy-MM-dd  HH:mm", CultureInfo.InvariantCulture);
-                string meta = $"LAT {latDeg:+0.0000;-0.0000}  LON {lonDeg:+0.0000;-0.0000}   {localStr}";
-                int tw = BitmapFont5x7.MeasureWidth(meta, metaFontScale);
-                int tx = (width - tw) / 2;
-                int ty = marginPx + titleH + 6 * metaFontScale - 30;
-                BitmapFont5x7.DrawText(pixels, width, height, tx, ty, meta,
-                    metaFontScale, new Color32(160, 160, 160, 255));
-            }
+            DrawHeaderAndLegend(pixels, width, height,
+                chartCx, chartCy, chartRadius,
+                marginPx, titleFontScale, metaFontScale,
+                latDeg, lonDeg, precomputedBodies,
+                invertColors: false);
 
-            byte[] jpg = PixelsToJpeg(pixels, width, height);
+            string ext  = asPng ? "png" : "jpg";
+            string name = $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.{ext}";
+            if (!TryGetSavePath(name, ext, out string file))
+            { OnExportFailed?.Invoke("Save cancelled."); return; }
 
-            string defaultFileName = $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg";
-            if (!TryGetSavePath(defaultFileName, "jpg", out string file))
-            {
-                OnExportFailed?.Invoke("Save cancelled.");
-                return;
-            }
-
-            WriteFile(file, jpg);
+            WriteFile(file, EncodePixels(pixels, width, height, asPng));
             LogStats(file, stats, latDeg, lonDeg);
             OnExportComplete?.Invoke(file);
         }
         finally { _isExporting = false; }
     }
 
-    // =======================================================================
-    // PUBLIC BUTTON 2 – 8.5 × 11 print-page JPEG export
-    // =======================================================================
-    public async void Export2DChartPrint()
+    // -----------------------------------------------------------------------
+    // 8.5 × 11 print page export
+    // -----------------------------------------------------------------------
+    private async Task DoExportPrint(bool asPng)
     {
         if (_isExporting)
         {
@@ -600,63 +677,40 @@ public class StarChartExporter2D : MonoBehaviour
                     out Dictionary<int, StarRecord> hipLookup))
                 return;
 
-            // ---- Page dimensions in pixels --------------------------------
-            float shortInch = 8.5f;
-            float longInch  = 11.0f;
-            float wInch = printLandscape ? longInch : shortInch;
-            float hInch = printLandscape ? shortInch : longInch;
-
-            int pageW = Mathf.RoundToInt(wInch  * printDpi);
-            int pageH = Mathf.RoundToInt(hInch  * printDpi);
+            float wInch = printLandscape ? 11.0f : 8.5f;
+            float hInch = printLandscape ?  8.5f : 11.0f;
+            int pageW    = Mathf.RoundToInt(wInch * printDpi);
+            int pageH    = Mathf.RoundToInt(hInch * printDpi);
             int marginPx = Mathf.RoundToInt(printMarginInches * printDpi);
 
-            // ---- Header area (title + metadata) ---------------------------
-            // Reserve space at top: title row (scale-3 font = 21 px) + meta row (scale-2 = 14 px)
-            // with comfortable padding – scaled to DPI so it looks the same at any resolution.
-            int titleFontScale = Mathf.Max(1, printDpi / 72);    // ~4 at 300 dpi
-            int metaFontScale  = Mathf.Max(1, printDpi / 108);   // ~2–3 at 300 dpi
-            titleFontScale = Mathf.Clamp(titleFontScale, 2, 6);
-            metaFontScale  = Mathf.Clamp(metaFontScale,  1, 4);
+            int titleFontScale = Mathf.Clamp(printDpi / 72,  2, 6);
+            int metaFontScale  = Mathf.Clamp(printDpi / 108, 1, 4);
 
-            int titleH   = BitmapFont5x7.MeasureHeight(titleFontScale);
-            int metaH    = BitmapFont5x7.MeasureHeight(metaFontScale);
-            int headerH  = marginPx + titleH + 6 * metaFontScale + metaH + 8 * metaFontScale;
+            int titleH  = BitmapFont5x7.MeasureHeight(titleFontScale);
+            int metaH   = BitmapFont5x7.MeasureHeight(metaFontScale);
+            int headerH = marginPx + titleH + 6 * metaFontScale + metaH + 8 * metaFontScale;
 
-            // ---- Chart disc size ------------------------------------------
-            // Fill the printable area below the header, constrained to a circle.
-            int printableW = pageW - 2 * marginPx;
-            int printableH = pageH - headerH - marginPx;   // bottom margin too
-            int chartDiam  = Mathf.Min(printableW, printableH);
-            chartDiam      = Mathf.Max(chartDiam, 64);      // sanity floor
-
-            float chartRadius = chartDiam / 2f - 4f;        // small inset so the outline is not clipped
-
+            int chartDiam = Mathf.Max(64,
+                Mathf.Min(pageW - 2 * marginPx, pageH - headerH - marginPx));
+            float chartRadius = chartDiam / 2f - 4f;
             int chartCx = pageW / 2;
             int chartCy = headerH + chartDiam / 2;
 
-            // ---- Allocate page buffer -------------------------------------
             var precomputedBodies = PrecomputeBodies(utc, latDeg, lonDeg, chartCx, chartCy, chartRadius);
 
             EnsureBuffers(pageW, pageH);
             var pixels = _pixelBuffer;
             var occ    = basicLabelCollisionAvoidance ? _occBuffer : null;
 
-            // Fill page background
             Array.Fill(pixels, printPageColor);
 
-            // ---- Render chart onto the page buffer ------------------------
             var inputs = BuildRasterInputs(
-                pixels, occ,
-                pageW, pageH,
-                cx: chartCx, cy: chartCy,
-                chartRadius: chartRadius,
+                pixels, occ, pageW, pageH,
+                cx: chartCx, cy: chartCy, chartRadius: chartRadius,
                 lstDeg, latRad, starsSnapshot, magLimit,
                 constellations, precomputedBodies, hipLookup,
                 invertColors: invertPrintColors);
 
-            // Background for the chart disc area: when inverted the page is
-            // already white, so we draw a white disc (no-op), but when NOT
-            // inverted we want the dark gradient. The rasterizer handles this.
             RasterStats stats;
             try { stats = await Task.Run(() => RasterizeChart(inputs)); }
             catch (Exception ex)
@@ -666,59 +720,315 @@ public class StarChartExporter2D : MonoBehaviour
                 return;
             }
 
-            // ---- Header text (drawn on main thread after Task.Run) -------
-            // Title "STARS"
-            {
-                string title  = "STARS";
-                int    tw     = BitmapFont5x7.MeasureWidth(title, titleFontScale);
-                int    th     = BitmapFont5x7.MeasureHeight(titleFontScale);
-                int    tx     = (pageW - tw) / 2;
-                int    ty     = marginPx;
-                Color32 titleCol = invertPrintColors
-                    ? new Color32(0, 0, 0, 255)
-                    : new Color32(230, 230, 230, 255);
-                BitmapFont5x7.DrawText(pixels, pageW, pageH, tx, ty, title, titleFontScale, titleCol);
-            }
+            DrawHeaderAndLegend(pixels, pageW, pageH,
+                chartCx, chartCy, chartRadius,
+                marginPx, titleFontScale, metaFontScale,
+                latDeg, lonDeg, precomputedBodies,
+                invertColors: invertPrintColors,
+                legendInMargin: true);
 
-            // Metadata line
-            {
-                string localStr = SkySession.Instance.LocalDateTime.ToString(
-                    "yyyy-MM-dd  HH:mm", CultureInfo.InvariantCulture);
-                string meta = $"LAT {latDeg:+0.0000;-0.0000}  LON {lonDeg:+0.0000;-0.0000}   {localStr}";
-                int    tw   = BitmapFont5x7.MeasureWidth(meta, metaFontScale);
-                int    th   = BitmapFont5x7.MeasureHeight(metaFontScale);
-                int    tx   = (pageW - tw) / 2;
-                int    ty   = marginPx + BitmapFont5x7.MeasureHeight(titleFontScale)
-                                       + 6 * metaFontScale;
-                Color32 metaCol = invertPrintColors
-                    ? new Color32(40, 40, 40, 255)
-                    : new Color32(200, 200, 200, 255);
-                BitmapFont5x7.DrawText(pixels, pageW, pageH, tx, ty, meta, metaFontScale, metaCol);
-            }
-
-            // ---- Optional page frame -------------------------------------
             if (drawPrintFrame)
-            {
                 DrawRectOutline(pixels, pageW, pageH,
                     0, 0, pageW - 1, pageH - 1,
                     printFrameThicknessPx, printFrameColor);
-            }
 
-            // ---- Encode and save -----------------------------------------
-            byte[] jpg = PixelsToJpeg(pixels, pageW, pageH);
+            string ext  = asPng ? "png" : "jpg";
+            string name = $"StarChart_Print_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.{ext}";
+            if (!TryGetSavePath(name, ext, out string file))
+            { OnExportFailed?.Invoke("Save cancelled."); return; }
 
-            string defaultFileName = $"StarChart_Print_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg";
-            if (!TryGetSavePath(defaultFileName, "jpg", out string file))
-            {
-                OnExportFailed?.Invoke("Save cancelled.");
-                return;
-            }
-
-            WriteFile(file, jpg);
+            WriteFile(file, EncodePixels(pixels, pageW, pageH, asPng));
             LogStats(file, stats, latDeg, lonDeg);
             OnExportComplete?.Invoke(file);
         }
         finally { _isExporting = false; }
+    }
+
+    // =======================================================================
+    // DrawHeaderAndLegend
+    // Shared by both JPEG and print exports.
+    // Header: "STARS" title + metadata centered above the disc.
+    // Legend: bordered, titled two-column table bottom-left.
+    // Magnitude key: bordered dot scale bottom-right.
+    // =======================================================================
+    private void DrawHeaderAndLegend(
+        Color32[] pixels, int canvasW, int canvasH,
+        int chartCx, int chartCy, float chartRadius,
+        int marginPx, int titleFontScale, int metaFontScale,
+        double latDeg, double lonDeg,
+        List<PrecomputedBody> bodies,
+        bool invertColors,
+        bool legendInMargin = false)
+    {
+        // ---- Colors -------------------------------------------------------
+        Color32 titleCol   = invertColors ? new Color32(0,   0,   0,   255) : new Color32(230, 230, 230, 255);
+        Color32 metaCol    = invertColors ? new Color32(40,  40,  40,  255) : new Color32(180, 180, 180, 255);
+        Color32 legendCol  = invertColors ? new Color32(30,  30,  30,  255) : new Color32(200, 200, 200, 255);
+        Color32 dividerCol = invertColors ? new Color32(120, 120, 120, 255) : new Color32(80,  80,  80,  255);
+        Color32 borderCol  = invertColors ? new Color32(80,  80,  100, 255) : legendBorderColor;
+
+        // ---- Header -------------------------------------------------------
+        int titleH       = BitmapFont5x7.MeasureHeight(titleFontScale);
+        int metaH        = BitmapFont5x7.MeasureHeight(metaFontScale);
+        int lineGap      = Mathf.Max(2, metaFontScale * 3);
+        int headerBlockH = titleH + lineGap + metaH;
+        int discTop      = chartCy - Mathf.RoundToInt(chartRadius);
+        int headerBotY   = discTop - marginPx / 2;
+        int headerTopY   = Mathf.Max(2, headerBotY - headerBlockH);
+
+        {
+            string title = "STARS";
+            int tw = BitmapFont5x7.MeasureWidth(title, titleFontScale);
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                chartCx - tw / 2, headerTopY, title, titleFontScale, titleCol);
+        }
+        {
+            string localStr = SkySession.Instance.LocalDateTime.ToString(
+                "yyyy-MM-dd  HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+            string meta = $"LAT {latDeg:+0.0000;-0.0000}  LON {lonDeg:+0.0000;-0.0000}   {localStr}";
+            int tw = BitmapFont5x7.MeasureWidth(meta, metaFontScale);
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                chartCx - tw / 2, headerTopY + titleH + lineGap, meta, metaFontScale, metaCol);
+        }
+
+        // ---- Magnitude key ------------------------------------------------
+        if (enableMagnitudeKey)
+            DrawMagnitudeKey(pixels, canvasW, canvasH, chartCx, chartCy, chartRadius,
+                marginPx, metaFontScale, invertColors, legendInMargin);
+
+        // ---- Legend -------------------------------------------------------
+        if (!enableLegend) return;
+
+        var legendBodies = new List<PrecomputedBody>();
+        foreach (var b in bodies)
+            if (b.aboveHorizon) legendBodies.Add(b);
+
+        legendBodies.Sort((a, b) => {
+            if (a.isSun)  return -1; if (b.isSun)  return 1;
+            if (a.isMoon) return -1; if (b.isMoon) return 1;
+            return a.mag.CompareTo(b.mag);
+        });
+
+        if (legendBodies.Count == 0) return;
+
+        int legendFontScale = metaFontScale;
+        int legendTextH     = BitmapFont5x7.MeasureHeight(legendFontScale);
+        int rowH            = Mathf.Max(legendTextH, 14) + Mathf.Max(2, legendFontScale * 2);
+        float symDotR       = Mathf.Max(2f, legendFontScale * 1.8f);
+        int symColW         = Mathf.RoundToInt(symDotR * 5f);
+        int divGap          = Mathf.Max(3, legendFontScale * 2);
+        int nameColX        = symColW + divGap * 2 + 1;
+
+        int maxNameW = 0;
+        foreach (var b in legendBodies)
+        {
+            int nw = BitmapFont5x7.MeasureWidth(SanitizeLabel(b.name), legendFontScale);
+            if (nw > maxNameW) maxNameW = nw;
+        }
+
+        int colW    = nameColX + maxNameW + Mathf.Max(6, legendFontScale * 4);
+        int numRows = (legendBodies.Count + 1) / 2;
+        int legendH = numRows * rowH;
+
+        // Title + separator above rows
+        int ltScale  = Mathf.Max(1, legendFontScale);
+        int ltH      = BitmapFont5x7.MeasureHeight(ltScale);
+        int ltGap    = Mathf.Max(2, legendFontScale * 2);
+        int fullH    = ltH + ltGap + legendH;
+
+        int padX     = Mathf.Max(3, legendFontScale * 2);
+        int padY     = Mathf.Max(3, legendFontScale * 2);
+        int pad      = Mathf.Max(4, marginPx / 4);
+
+        int discBottom = chartCy + Mathf.RoundToInt(chartRadius);
+        int discLeft   = chartCx - Mathf.RoundToInt(chartRadius);
+
+        int legendX, legendY;
+        if (legendInMargin)
+        {
+            int bmTop  = discBottom + Mathf.Max(4, marginPx / 4);
+            int bmBot  = canvasH - marginPx;
+            int avail  = bmBot - bmTop;
+            legendX    = marginPx + padX;
+            legendY    = avail > fullH ? bmTop + (avail - fullH) / 2 : bmTop;
+            legendY    = Mathf.Clamp(legendY, bmTop, Mathf.Max(bmTop, canvasH - fullH - padY - pad));
+        }
+        else
+        {
+            legendX = Mathf.Max(pad + padX, discLeft - colW * 2 - pad);
+            if (legendX < pad + padX) legendX = pad + padX;
+            legendY = discBottom - fullH - padY;
+            legendY = Mathf.Clamp(legendY, marginPx + padY, canvasH - fullH - padY - pad);
+        }
+
+        int boxX = legendX - padX;
+        int boxY = legendY - padY;
+        int boxW = colW * 2 + padX * 2;
+        int boxH = fullH + padY * 2;
+
+        // Border
+        DrawRectOutline(pixels, canvasW, canvasH, boxX, boxY, boxX + boxW, boxY + boxH, 1, borderCol);
+
+        // "LEGEND" title centred in box
+        {
+            string ltxt = "LEGEND";
+            int tw = BitmapFont5x7.MeasureWidth(ltxt, ltScale);
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                boxX + (boxW - tw) / 2, legendY, ltxt, ltScale, borderCol);
+            int sepY = legendY + ltH + ltGap / 2;
+            DrawLineThick(pixels, canvasW, canvasH, boxX + 1, sepY, boxX + boxW - 2, sepY, borderCol, 1);
+        }
+
+        int rowsY = legendY + ltH + ltGap;
+
+        Color32[] pCols = invertColors
+            ? new Color32[] {
+                new Color32(100,95,90,255),  new Color32(140,110,40,255),
+                new Color32(160,40,20,255),  new Color32(130,90,40,255),
+                new Color32(140,120,50,255), new Color32(30,120,120,255),
+                new Color32(20,50,160,255) }
+            : new Color32[] {
+                mercuryColor, venusColor, marsColor, jupiterColor,
+                saturnColor,  uranusColor, neptuneColor };
+
+        for (int idx = 0; idx < legendBodies.Count; idx++)
+        {
+            var body  = legendBodies[idx];
+            int ci    = idx % 2;
+            int ri    = idx / 2;
+            int cellX = legendX + ci * colW;
+            int cellY = rowsY + ri * rowH;
+            int symCx = cellX + symColW / 2;
+            int symCy = cellY + rowH / 2;
+
+            if (body.isSun)
+            {
+                float sr = Mathf.Min(symDotR, rowH / 2f - 1f);
+                DrawSolidDot(pixels, canvasW, canvasH, symCx, symCy,
+                    Mathf.CeilToInt(sr),
+                    invertColors ? new Color32(200, 140, 0, 255) : sunColor);
+            }
+            else if (body.isMoon)
+            {
+                float mr = Mathf.Min(symDotR, rowH / 2f - 1f);
+                Color32 mLit  = invertColors ? new Color32(60,  60,  60,  255) : moonLitColor;
+                Color32 mDark = invertColors ? new Color32(210, 210, 210, 255) : moonDarkColor;
+                DrawMoonPhaseSymbol(pixels, canvasW, canvasH, symCx, symCy,
+                    mr, body.moonPhaseFraction, body.moonWaxing, mLit, mDark);
+            }
+            else
+            {
+                float sr = Mathf.Min(symDotR, rowH / 2f - 1f);
+                DrawPlanetByName(pixels, canvasW, canvasH, symCx, symCy,
+                    body.name, sr, PlanetColor(body.name, pCols),
+                    saturnRingRadiusMultiplier, saturnRingAxisRatio, saturnRingThicknessPx);
+            }
+
+            int divX = cellX + symColW + divGap;
+            DrawLineThick(pixels, canvasW, canvasH, divX, cellY + 1, divX, cellY + rowH - 2, dividerCol, 1);
+
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                cellX + nameColX, cellY + (rowH - legendTextH) / 2,
+                SanitizeLabel(body.name), legendFontScale, legendCol);
+        }
+    }
+
+    // =======================================================================
+    // Magnitude key — bottom-right, outside the disc, bordered + titled
+    // =======================================================================
+    private void DrawMagnitudeKey(
+        Color32[] pixels, int canvasW, int canvasH,
+        int chartCx, int chartCy, float chartRadius,
+        int marginPx, int fontScale,
+        bool invertColors, bool inMargin)
+    {
+        Color32 textCol   = invertColors ? new Color32(40,  40,  40,  255) : new Color32(190, 190, 190, 255);
+        Color32 borderCol = invertColors ? new Color32(80,  80,  100, 255) : legendBorderColor;
+
+        int textH   = BitmapFont5x7.MeasureHeight(fontScale);
+        int steps   = magnitudeKeySteps;
+        int rowH    = Mathf.Max(textH, 14) + Mathf.Max(2, fontScale * 2);
+
+        // Match dot radii to how the chart rasteriser sizes them
+        float[] radii = new float[steps];
+        for (int m = 0; m < steps; m++)
+        {
+            float t  = Mathf.InverseLerp(0f, 6f, m);
+            float r  = Mathf.Lerp(maxStarRadiusPx, minStarRadiusPx, Mathf.Pow(t, 1.7f));
+            radii[m] = Mathf.Clamp(r * (fontScale * 0.6f), 1.5f, rowH / 2f - 1f);
+        }
+
+        int dotColW   = Mathf.Max(Mathf.RoundToInt(radii[0] * 2f) + 4, 10);
+        int labelColX = dotColW + Mathf.Max(3, fontScale * 2);
+        int maxLabelW = BitmapFont5x7.MeasureWidth("MAG 0", fontScale);
+        int colW      = labelColX + maxLabelW + Mathf.Max(4, fontScale * 3);
+
+        int ltScale = Mathf.Max(1, fontScale);
+        int ltH     = BitmapFont5x7.MeasureHeight(ltScale);
+        int ltGap   = Mathf.Max(2, fontScale * 2);
+        int bodyH   = steps * rowH;
+        int fullH   = ltH + ltGap + bodyH;
+
+        int padX = Mathf.Max(3, fontScale * 2);
+        int padY = Mathf.Max(3, fontScale * 2);
+        int pad  = Mathf.Max(4, marginPx / 4);
+
+        int discBottom = chartCy + Mathf.RoundToInt(chartRadius);
+        int discRight  = chartCx + Mathf.RoundToInt(chartRadius);
+
+        int keyX, keyY;
+        if (inMargin)
+        {
+            int bmTop  = discBottom + Mathf.Max(4, marginPx / 4);
+            int bmBot  = canvasH - marginPx;
+            int avail  = bmBot - bmTop;
+            keyX = canvasW - marginPx - colW - padX;
+            keyY = avail > fullH ? bmTop + (avail - fullH) / 2 : bmTop;
+            keyY = Mathf.Clamp(keyY, bmTop, Mathf.Max(bmTop, canvasH - fullH - padY - pad));
+        }
+        else
+        {
+            keyX = discRight - colW - padX;
+            if (keyX + colW + padX * 2 > canvasW - pad)
+                keyX = canvasW - colW - padX * 2 - pad;
+            keyY = discBottom - fullH - padY;
+            keyY = Mathf.Clamp(keyY, marginPx + padY, canvasH - fullH - padY - pad);
+        }
+
+        // Border
+        DrawRectOutline(pixels, canvasW, canvasH,
+            keyX - padX, keyY - padY,
+            keyX - padX + colW + padX * 2,
+            keyY - padY + fullH + padY * 2,
+            1, borderCol);
+
+        // Title "MAGNITUDE"
+        {
+            string ttxt = "MAGNITUDE";
+            int tw = BitmapFont5x7.MeasureWidth(ttxt, ltScale);
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                keyX + (colW - tw) / 2, keyY, ttxt, ltScale, borderCol);
+            int sepY = keyY + ltH + ltGap / 2;
+            DrawLineThick(pixels, canvasW, canvasH,
+                keyX - padX + 1, sepY, keyX - padX + colW + padX * 2 - 2, sepY, borderCol, 1);
+        }
+
+        int rowsY = keyY + ltH + ltGap;
+
+        for (int m = 0; m < steps; m++)
+        {
+            int cy2 = rowsY + m * rowH + rowH / 2;
+            int cx2 = keyX + dotColW / 2;
+
+            if (invertColors)
+                DrawSoftDotOnWhite(pixels, canvasW, canvasH, cx2, cy2, radii[m], 0.9f);
+            else
+                DrawSoftDot(pixels, canvasW, canvasH, cx2, cy2, radii[m], 0.95f);
+
+            int ty2 = rowsY + m * rowH + (rowH - textH) / 2;
+            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
+                keyX + labelColX, ty2, $"MAG {m}", fontScale, textCol);
+        }
     }
 
     // =======================================================================
@@ -800,7 +1110,30 @@ public class StarChartExporter2D : MonoBehaviour
         Color32 conLineCol   = invertColors ? new Color32(60,  90,  180, 255) : constellationLineColor;
         Color32 conLabelCol  = invertColors ? new Color32(40,  80,  160, 255) : constellationLabelColor;
         Color32 starLabelCol = invertColors ? new Color32(40,  40,  40,  255) : starLabelColor;
-        Color32 planetCol    = invertColors ? new Color32(100, 80,  20,  255) : planetColor;
+
+        // Per-planet colors — darkened for print, kept vivid for JPEG.
+        // Order matches PlanetColorIndex(): Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune
+        Color32[] planetColors = invertColors
+            ? new Color32[]
+            {
+                new Color32(100, 95,  90,  255),   // Mercury  – dark grey
+                new Color32(140, 110, 40,  255),   // Venus    – dark gold
+                new Color32(160, 40,  20,  255),   // Mars     – dark red
+                new Color32(130, 90,  40,  255),   // Jupiter  – dark tan
+                new Color32(140, 120, 50,  255),   // Saturn   – dark gold
+                new Color32(30,  120, 120, 255),   // Uranus   – dark cyan
+                new Color32(20,  50,  160, 255),   // Neptune  – dark blue
+            }
+            : new Color32[]
+            {
+                mercuryColor,
+                venusColor,
+                marsColor,
+                jupiterColor,
+                saturnColor,
+                uranusColor,
+                neptuneColor,
+            };
         Color32 sunCol       = invertColors ? new Color32(200, 140, 0,   255) : sunColor;
         Color32 moonLit      = invertColors ? new Color32(60,  60,  60,  255) : moonLitColor;
         Color32 moonDark     = invertColors ? new Color32(210, 210, 210, 255) : moonDarkColor;
@@ -887,7 +1220,10 @@ public class StarChartExporter2D : MonoBehaviour
             planetDotR    = planetDotRadiusPx,
             planetRingR   = planetRingRadiusPx,
             planetRingThick = planetRingThicknessPx,
-            planetCol     = planetCol,
+            planetColors  = planetColors,
+            saturnRingRadMul   = saturnRingRadiusMultiplier,
+            saturnRingAxisRatio = saturnRingAxisRatio,
+            saturnRingThick    = saturnRingThicknessPx,
             sunR          = sunRadiusPx,
             sunCol        = sunCol,
             moonR         = moonRadiusPx,
@@ -923,6 +1259,20 @@ public class StarChartExporter2D : MonoBehaviour
         Destroy(tex);
         return jpg;
     }
+
+    private static byte[] PixelsToPng(Color32[] pixels, int w, int h)
+    {
+        var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
+        tex.SetPixels32(pixels);
+        tex.Apply(false, false);
+        var png = tex.EncodeToPNG();
+        Destroy(tex);
+        return png;
+    }
+
+    /// <summary>Encode pixels to JPEG or PNG depending on the asPng flag.</summary>
+    private byte[] EncodePixels(Color32[] pixels, int w, int h, bool asPng)
+        => asPng ? PixelsToPng(pixels, w, h) : PixelsToJpeg(pixels, w, h, jpegQuality);
 
     private static void WriteFile(string path, byte[] data)
     {
@@ -1031,7 +1381,9 @@ public class StarChartExporter2D : MonoBehaviour
                     ? Mathf.CeilToInt(i.sunR + i.symPad + i.extraSolarLabelClearancePx)
                     : body.isMoon
                         ? Mathf.CeilToInt(i.moonR + i.symPad + i.extraSolarLabelClearancePx)
-                        : Mathf.CeilToInt(i.planetRingR + i.planetRingThick + i.symPad + i.extraSolarLabelClearancePx);
+                        : body.isSaturn
+                            ? Mathf.CeilToInt(i.planetDotR * i.saturnRingRadMul + i.saturnRingThick + i.symPad + i.extraSolarLabelClearancePx)
+                            : Mathf.CeilToInt(i.planetRingR + i.planetRingThick + i.symPad + i.extraSolarLabelClearancePx);
                 MarkCircleOccupied(i.occ, w, h, body.px, body.py, reserveRadius);
             }
         }
@@ -1194,16 +1546,22 @@ public class StarChartExporter2D : MonoBehaviour
             }
             else
             {
-                DrawPlanetSymbol(i.pixels, w, h, body.px, body.py,
-                    i.planetDotR, i.planetRingR, i.planetRingThick, i.planetCol);
+                Color32 col = PlanetColor(body.name, i.planetColors);
+                float symbolRadius = DrawPlanetByName(
+                    i.pixels, w, h, body.px, body.py, body.name,
+                    i.planetDotR, col,
+                    i.saturnRingRadMul, i.saturnRingAxisRatio, i.saturnRingThick);
+
                 stats.planetsDrawn++;
+
                 if (i.doCollision && i.occ != null)
                     MarkCircleOccupied(i.occ, w, h, body.px, body.py,
-                        Mathf.CeilToInt(i.planetRingR + i.planetRingThick + i.symPad));
+                        Mathf.CeilToInt(symbolRadius + i.symPad));
+
                 if (i.doPlanetLabels && solarLabelCandidates != null)
                     solarLabelCandidates.Add(new LabelCandidate { x = body.px, y = body.py, mag = body.mag,
                         name = body.name,
-                        avoidRadiusPx = i.planetRingR + i.planetRingThick + i.symPad + i.extraSolarLabelClearancePx });
+                        avoidRadiusPx = symbolRadius + i.symPad + i.extraSolarLabelClearancePx });
             }
         }
 
@@ -1789,12 +2147,240 @@ public class StarChartExporter2D : MonoBehaviour
         return wrote;
     }
 
-    private static void DrawPlanetSymbol(
-        Color32[] pix, int w, int h, int x, int y,
-        float dotR, float ringR, int ringThick, Color32 col)
+    // =======================================================================
+    // Per-planet color + shape helpers
+    // =======================================================================
+
+    /// <summary>
+    /// Maps a planet name to an index into the planetColors array.
+    /// Order: 0=Mercury 1=Venus 2=Mars 3=Jupiter 4=Saturn 5=Uranus 6=Neptune
+    /// </summary>
+    private static int PlanetColorIndex(string name)
     {
-        DrawSolidDot(pix, w, h, x, y, Mathf.CeilToInt(dotR), col);
-        DrawCircleOutline(pix, w, h, x, y, Mathf.CeilToInt(ringR), ringThick, col);
+        switch (name)
+        {
+            case "Mercury": return 0;
+            case "Venus":   return 1;
+            case "Mars":    return 2;
+            case "Jupiter": return 3;
+            case "Saturn":  return 4;
+            case "Uranus":  return 5;
+            case "Neptune": return 6;
+            default:        return 3;   // fallback: Jupiter tan
+        }
+    }
+
+    private static Color32 PlanetColor(string name, Color32[] colors)
+    {
+        if (colors == null || colors.Length == 0) return new Color32(220, 210, 160, 255);
+        int idx = PlanetColorIndex(name);
+        return colors[Mathf.Clamp(idx, 0, colors.Length - 1)];
+    }
+
+    /// <summary>
+    /// Draws the correct symbol for each planet and returns the outer radius
+    /// of the symbol (used for label clearance and collision reservation).
+    /// </summary>
+    private static float DrawPlanetByName(
+        Color32[] pix, int w, int h, int x, int y,
+        string name, float dotR, Color32 col,
+        float saturnRingRadMul, float saturnRingAxisRatio, int saturnRingThick)
+    {
+        int iDot = Mathf.Max(1, Mathf.RoundToInt(dotR));
+
+        switch (name)
+        {
+            case "Mercury":
+                return DrawMercurySymbol(pix, w, h, x, y, dotR, col);
+
+            case "Venus":
+                return DrawVenusSymbol(pix, w, h, x, y, dotR, col);
+
+            case "Mars":
+                return DrawMarsSymbol(pix, w, h, x, y, dotR, col);
+
+            case "Jupiter":
+                return DrawJupiterSymbol(pix, w, h, x, y, dotR, col);
+
+            case "Saturn":
+                return DrawSaturnSymbol(pix, w, h, x, y, dotR, col,
+                    saturnRingRadMul, saturnRingAxisRatio, saturnRingThick);
+
+            case "Uranus":
+                return DrawIceGiantSymbol(pix, w, h, x, y, dotR, col, horizontal: true);
+
+            case "Neptune":
+                return DrawIceGiantSymbol(pix, w, h, x, y, dotR, col, horizontal: false);
+
+            default:
+                // Fallback: plain filled dot
+                DrawSolidDot(pix, w, h, x, y, iDot, col);
+                return dotR;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Mercury: filled circle + tiny arc horns on top  (☿ inspired)
+    // -----------------------------------------------------------------------
+    private static float DrawMercurySymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col)
+    {
+        int iDot  = Mathf.Max(1, Mathf.RoundToInt(dotR));
+        int cross = Mathf.Max(1, Mathf.RoundToInt(dotR * 0.8f));
+        int horn  = Mathf.Max(1, Mathf.RoundToInt(dotR * 0.55f));
+
+        // Filled disc
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        // Vertical stem below
+        int stemBot = cy + iDot + cross;
+        DrawLineThick(pix, w, h, cx, cy + iDot, cx, stemBot, col, 1);
+
+        // Horizontal crossbar
+        DrawLineThick(pix, w, h, cx - cross, cy + iDot + cross / 2,
+                                  cx + cross, cy + iDot + cross / 2, col, 1);
+
+        // Two small arc "horns" above the circle — approximated as short diagonal lines
+        int hornY = cy - iDot;
+        DrawLineThick(pix, w, h, cx,        hornY,     cx - horn, hornY - horn, col, 1);
+        DrawLineThick(pix, w, h, cx,        hornY,     cx + horn, hornY - horn, col, 1);
+
+        return dotR + horn + 1f;
+    }
+
+    // -----------------------------------------------------------------------
+    // Venus: filled circle + cross below  (♀ inspired)
+    // -----------------------------------------------------------------------
+    private static float DrawVenusSymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col)
+    {
+        int iDot  = Mathf.Max(1, Mathf.RoundToInt(dotR));
+        int cross = Mathf.Max(1, Mathf.RoundToInt(dotR * 0.9f));
+
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        // Vertical stem
+        int stemTop = cy + iDot + 1;
+        int stemBot = stemTop + cross;
+        DrawLineThick(pix, w, h, cx, stemTop, cx, stemBot, col, 1);
+
+        // Horizontal bar at mid-stem
+        int barY = stemTop + cross / 2;
+        DrawLineThick(pix, w, h, cx - cross, barY, cx + cross, barY, col, 1);
+
+        return dotR + cross + 2f;
+    }
+
+    // -----------------------------------------------------------------------
+    // Mars: filled circle + small arrow pointing upper-right  (♂ inspired)
+    // -----------------------------------------------------------------------
+    private static float DrawMarsSymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col)
+    {
+        int iDot   = Mathf.Max(1, Mathf.RoundToInt(dotR));
+        int arrow  = Mathf.Max(2, Mathf.RoundToInt(dotR * 1.1f));
+        int tip    = Mathf.Max(1, Mathf.RoundToInt(dotR * 0.55f));
+
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        // Diagonal shaft to upper-right
+        int tx = cx + arrow;
+        int ty = cy - arrow;
+        DrawLineThick(pix, w, h, cx + iDot, cy - iDot, tx, ty, col, 1);
+
+        // Arrowhead: two short lines back from the tip
+        DrawLineThick(pix, w, h, tx, ty, tx - tip, ty,      col, 1);
+        DrawLineThick(pix, w, h, tx, ty, tx,        ty + tip, col, 1);
+
+        return dotR + arrow + 2f;
+    }
+
+    // -----------------------------------------------------------------------
+    // Jupiter: filled square  (bold, distinctive)
+    // -----------------------------------------------------------------------
+    private static float DrawJupiterSymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col)
+    {
+        int half = Mathf.Max(1, Mathf.RoundToInt(dotR * 1.1f));
+
+        int x0 = cx - half, y0 = cy - half;
+        int x1 = cx + half, y1 = cy + half;
+
+        // Filled square
+        for (int yy = y0; yy <= y1; yy++)
+        {
+            if (yy < 0 || yy >= h) continue;
+            int row = (h - 1 - yy) * w;
+            for (int xx = x0; xx <= x1; xx++)
+            {
+                if (xx >= 0 && xx < w) pix[row + xx] = col;
+            }
+        }
+
+        return half + 1f;
+    }
+
+    // -----------------------------------------------------------------------
+    // Saturn: filled circle + elliptical rings  (♄ inspired, most distinctive)
+    // -----------------------------------------------------------------------
+    private static float DrawSaturnSymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col,
+        float ringRadMul, float axisRatio, int ringThick)
+    {
+        int iDot = Mathf.Max(1, Mathf.RoundToInt(dotR));
+
+        // Draw planet disc first so the ring overlaps it correctly
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        // Elliptical ring: iterate over angles and plot thick ellipse
+        float rx = dotR * ringRadMul;               // horizontal semi-axis
+        float ry = rx * axisRatio;                  // vertical semi-axis (squashed)
+
+        int steps = Mathf.Max(120, Mathf.RoundToInt(rx * 6f));
+        float prevX = float.NaN, prevY = float.NaN;
+
+        for (int step = 0; step <= steps; step++)
+        {
+            float angle = step / (float)steps * Mathf.PI * 2f;
+            float ex = cx + rx * Mathf.Cos(angle);
+            float ey = cy + ry * Mathf.Sin(angle);
+
+            if (!float.IsNaN(prevX))
+            {
+                int ix0 = Mathf.RoundToInt(prevX), iy0 = Mathf.RoundToInt(prevY);
+                int ix1 = Mathf.RoundToInt(ex),    iy1 = Mathf.RoundToInt(ey);
+                DrawLineThick(pix, w, h, ix0, iy0, ix1, iy1, col, ringThick);
+            }
+
+            prevX = ex; prevY = ey;
+        }
+
+        // Redraw the disc on top so the ring doesn't cut through the centre
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        return rx + ringThick;
+    }
+
+    // -----------------------------------------------------------------------
+    // Uranus / Neptune: filled circle + line through centre
+    //   Uranus  → horizontal bar  (⛢ inspired)
+    //   Neptune → vertical bar    (♆ inspired)
+    // -----------------------------------------------------------------------
+    private static float DrawIceGiantSymbol(
+        Color32[] pix, int w, int h, int cx, int cy, float dotR, Color32 col,
+        bool horizontal)
+    {
+        int iDot = Mathf.Max(1, Mathf.RoundToInt(dotR));
+        int bar  = Mathf.Max(2, Mathf.RoundToInt(dotR * 1.4f));
+
+        DrawSolidDot(pix, w, h, cx, cy, iDot, col);
+
+        if (horizontal)
+            DrawLineThick(pix, w, h, cx - bar, cy, cx + bar, cy, col, 1);
+        else
+            DrawLineThick(pix, w, h, cx, cy - bar, cx, cy + bar, col, 1);
+
+        return Mathf.Max(iDot, bar) + 1f;
     }
 
     private static void DrawMoonPhaseSymbol(

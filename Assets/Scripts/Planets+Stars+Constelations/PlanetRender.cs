@@ -3,35 +3,40 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using UnityEngine;
 
-
-
 public class PlanetRender : MonoBehaviour
 {
-        public GameObject planetLabelPrefab;
+    public GameObject planetLabelPrefab;
 
-        [Header("Label Settings")]
-        public float labelOffset = 1.5f;
-        public float labelScale = 1f;
-        public Color labelColor = Color.yellow;
-        private List<GameObject> activeLabels = new List<GameObject>();
-        private GameObject labelParent;
+    [Header("Label Settings")]
+    public float labelOffset = 1.5f;
+    public float labelScale = 1f;
+    public Color labelColor = Color.yellow;
+    private List<GameObject> activeLabels = new List<GameObject>();
+    private GameObject labelParent;
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
     public bool showBelowHorizon = false;
     private bool labelVisible = true;
     public float skyRadius = 100f;
-[Header("Planet Materials")]
-public Material mercuryMat;
-public Material venusMat;
-public Material moonMat;
-public Material marsMat;
-public Material jupiterMat;
-public Material saturnMat;
-public Material uranusMat;
-public Material neptuneMat;
+
+    [Header("Planet Materials")]
+    public Material mercuryMat;
+    public Material venusMat;
+    public Material moonMat;
+    public Material marsMat;
+    public Material jupiterMat;
+    public Material saturnMat;
+    public Material uranusMat;
+    public Material neptuneMat;
+
     private Dictionary<string, GameObject> spawnedPlanets =
         new Dictionary<string, GameObject>();
 
+    /// <summary>
+    /// Fires whenever planet label visibility is toggled.
+    /// Subscribe to this in StarChartExporter2D to keep export settings in sync.
+    /// </summary>
+    public event Action<bool> OnLabelsVisibilityChanged;
 
     public void RenderPlanets()
     {
@@ -55,7 +60,7 @@ public Material neptuneMat;
 
         double jd = AstronomyTime.JulianDate(utc);
         double gmst = AstronomyTime.GreenwichMeanSiderealTimeDeg(jd);
-        double lst = AstronomyTime.LocalSiderealTimeDeg(gmst,SkySession.Instance.LongitudeDeg);
+        double lst = AstronomyTime.LocalSiderealTimeDeg(gmst, SkySession.Instance.LongitudeDeg);
 
         double latitudeRad =
             AstronomyTime.DegToRad(SkySession.Instance.LatitudeDeg);
@@ -77,9 +82,9 @@ public Material neptuneMat;
 
             double altRad = Math.Asin(sinAlt);
 
-            // === MATCH SKYMAP: skip below horizon ===
             if (!showBelowHorizon && altRad <= 0)
                 continue;
+
             double cosAz =
                 (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
                 (Math.Cos(altRad) * Math.Cos(latitudeRad));
@@ -97,25 +102,23 @@ public Material neptuneMat;
                 (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))
             );
 
-        GameObject obj =
-            Instantiate(planetPrefab, position, Quaternion.identity, transform);
+            GameObject obj =
+                Instantiate(planetPrefab, position, Quaternion.identity, transform);
 
-        obj.name = planet.body;
+            obj.name = planet.body;
 
-        Material mat = getPlanetMaterial(planet.body);
-        if (mat != null)
-        {
-            Renderer renderer = obj.GetComponentInChildren<Renderer>();
-            renderer.material = mat;
-        }
+            Material mat = getPlanetMaterial(planet.body);
+            if (mat != null)
+            {
+                Renderer renderer = obj.GetComponentInChildren<Renderer>();
+                renderer.material = mat;
+            }
 
-        // === Magnitude scaling ===
-        float size = Mathf.Lerp(0.8f, 0.2f, (float)(planet.magnitude / 6.0f));
-        obj.transform.localScale = Vector3.one * size;
+            float size = Mathf.Lerp(0.8f, 0.2f, (float)(planet.magnitude / 6.0f));
+            obj.transform.localScale = Vector3.one * size;
 
             spawnedPlanets[planet.body] = obj;
 
-            // Magnitude scaling (same concept as stars)
             obj.transform.localScale = Vector3.one * size;
             UnityEngine.Debug.Log("Current Planet Body: " + planet.body);
             CreateLabel(planet.body, position);
@@ -132,73 +135,64 @@ public Material neptuneMat;
             RenderPlanets();
 
         labelParent.SetActive(visible);
+
+        // Notify subscribers (e.g. StarChartExporter2D) so export stays in sync.
+        OnLabelsVisibilityChanged?.Invoke(visible);
     }
 
-private void CreateLabel(string planetName, Vector3 planetPosition)
-{
-    if (planetLabelPrefab == null)
+    private void CreateLabel(string planetName, Vector3 planetPosition)
     {
-        UnityEngine.Debug.LogError("Planet label prefab missing!");
-        return;
-    }
+        if (planetLabelPrefab == null)
+        {
+            UnityEngine.Debug.LogError("Planet label prefab missing!");
+            return;
+        }
 
-    // Move label slightly outward from sky dome
-    Vector3 labelPosition =
-        planetPosition.normalized * (skyRadius + labelOffset);
+        Vector3 labelPosition =
+            planetPosition.normalized * (skyRadius + labelOffset);
 
-    // Instantiate label
-    GameObject label = Instantiate(
-        planetLabelPrefab,
-        labelPosition,
-        Quaternion.identity,
-        labelParent.transform
-    );
+        GameObject label = Instantiate(
+            planetLabelPrefab,
+            labelPosition,
+            Quaternion.identity,
+            labelParent.transform
+        );
 
-    TextMesh textMesh = label.GetComponent<TextMesh>();
-
+        TextMesh textMesh = label.GetComponent<TextMesh>();
         textMesh.text = planetName;
 
-    label.transform.localScale = Vector3.one * labelScale;
+        label.transform.localScale = Vector3.one * labelScale;
 
         label.transform.LookAt(Camera.main.transform);
         label.transform.Rotate(0, 180f, 0);
 
-    activeLabels.Add(label);
-}
-
-private void ClearLabels()
-{
-    foreach (var label in activeLabels)
-    {
-        if (label != null)
-            Destroy(label);
+        activeLabels.Add(label);
     }
 
-    activeLabels.Clear();
-}
-
-Material getPlanetMaterial(string body)
+    private void ClearLabels()
     {
-        switch(body)
+        foreach (var label in activeLabels)
         {
-            case "Mercury":
-                return mercuryMat;
-            case "Venus":
-                return venusMat;
-            case "Moon":
-                return moonMat;
-            case "Mars":
-                return marsMat;
-            case "Jupiter":
-                return jupiterMat;
-            case "Saturn":
-                return saturnMat;
-            case "Uranus":
-                return uranusMat;
-            case "Neptune":
-                return neptuneMat;
-            default:
-                return null;
+            if (label != null)
+                Destroy(label);
+        }
+
+        activeLabels.Clear();
+    }
+
+    Material getPlanetMaterial(string body)
+    {
+        switch (body)
+        {
+            case "Mercury": return mercuryMat;
+            case "Venus":   return venusMat;
+            case "Moon":    return moonMat;
+            case "Mars":    return marsMat;
+            case "Jupiter": return jupiterMat;
+            case "Saturn":  return saturnMat;
+            case "Uranus":  return uranusMat;
+            case "Neptune": return neptuneMat;
+            default:        return null;
         }
     }
 
@@ -206,9 +200,8 @@ Material getPlanetMaterial(string body)
     {
         showBelowHorizon = value;
         RenderPlanets();
-        
-        // If planet labels were hidden, make sure they stay hidden when toggling planets under the horizon.
-        labelParent.SetActive(labelVisible); 
-    }
 
+        // If planet labels were hidden, make sure they stay hidden when toggling planets under the horizon.
+        labelParent.SetActive(labelVisible);
+    }
 }

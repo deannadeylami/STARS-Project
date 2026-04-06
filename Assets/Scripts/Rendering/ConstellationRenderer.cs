@@ -1,5 +1,6 @@
 //Constellation Labels 
 
+using System;
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -8,11 +9,18 @@ public class ConstellationRenderer : MonoBehaviour
     public string fileName = "constellations_with_names.txt";
     public Material lineMaterial;
     public float lineWidth = 0.05f;
-    private List<GameObject> labels = new List<GameObject> ();
+    private List<GameObject> labels = new List<GameObject>();
     public float labelOffset = 2f;
     public float labelSize = 1f;
-    public Color labelColor = Color.blue; 
+    public Color labelColor = Color.blue;
     public SkyMapRenderer skyMap;
+
+    /// <summary>
+    /// Fires whenever constellation visibility is toggled.
+    /// Subscribe to this in StarChartExporter2D to keep export settings in sync.
+    /// </summary>
+    public event Action<bool> OnConstellationsVisibilityChanged;
+
     void Start()
     {
         if (skyMap == null)
@@ -53,29 +61,35 @@ public class ConstellationRenderer : MonoBehaviour
             lr.useWorldSpace = true;
         }
     }
-    void CreateLabel(ConstellationCatalog.Constellation c) 
+
+    void CreateLabel(ConstellationCatalog.Constellation c)
     {
-        Vector3 sum = Vector3.zero; int count = 0; 
+        Vector3 sum = Vector3.zero; int count = 0;
         foreach (int hip in c.UniqueHipIds)
-        { 
+        {
             if (skyMap.StarPositions.TryGetValue(hip, out var pos))
-            { 
-                sum += pos; count++; 
-            } 
-        } 
+            {
+                sum += pos; count++;
+            }
+        }
         if (count == 0) return;
-        Vector3 center = sum / count; 
-        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset); 
+
+        Vector3 center = sum / count;
+        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset);
+
         GameObject textObj = new GameObject($"{c.Abbrev}_Label");
-        textObj.transform.parent = this.transform; 
-        textObj.transform.position = labelPos; 
+        textObj.transform.parent = this.transform;
+        textObj.transform.position = labelPos;
+
         var textMesh = textObj.AddComponent<TextMesh>();
         textMesh.text = string.IsNullOrEmpty(c.Name) ? c.Abbrev : c.Name;
-        textMesh.characterSize = labelSize; 
-        textMesh.color = labelColor; 
-        textMesh.anchor = TextAnchor.MiddleCenter; 
+        textMesh.characterSize = labelSize;
+        textMesh.color = labelColor;
+        textMesh.anchor = TextAnchor.MiddleCenter;
+
         labels.Add(textObj);
     }
+
     void Update()
     {
         if (Camera.main == null) return;
@@ -92,6 +106,8 @@ public class ConstellationRenderer : MonoBehaviour
     public void SetConstellationsVisible(bool visible)
     {
         gameObject.SetActive(visible);
+
+        // Notify subscribers (e.g. StarChartExporter2D) so export stays in sync.
+        OnConstellationsVisibilityChanged?.Invoke(visible);
     }
 }
-

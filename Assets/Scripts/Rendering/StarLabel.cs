@@ -20,6 +20,12 @@ public class StarLabel : MonoBehaviour
     private const double HorizonEpsRad = 1e-6; //small epsilon to prevent floating pt errors at the horizon 
     private List<GameObject> activeLabels = new List<GameObject>(); //keeps track of all currently rendered labels
 
+    /// <summary>
+    /// Fires whenever star label visibility is toggled.
+    /// Subscribe to this in StarChartExporter2D to keep export settings in sync.
+    /// </summary>
+    public event Action<bool> OnLabelsVisibilityChanged;
+
     void Start()
     {
         RenderLabels();
@@ -131,6 +137,9 @@ public class StarLabel : MonoBehaviour
             RenderLabels();
 
         labelParent.SetActive(visible);
+
+        // Notify subscribers (e.g. StarChartExporter2D) so export stays in sync.
+        OnLabelsVisibilityChanged?.Invoke(visible);
     }
 
 
@@ -165,6 +174,7 @@ public class StarLabel : MonoBehaviour
 
         activeLabels.Add(label);
     }
+
     private void ClearLabels()
     {
         // Loop through all previously created labels
@@ -187,8 +197,8 @@ public class StarLabel : MonoBehaviour
         
         // If star labels were hidden, make sure they stay hidden when toggling stars under the horizon.
         labelParent.SetActive(labelVisible); 
-        
     }
+
     public void QuitApplication()
     {
         Application.Quit();
