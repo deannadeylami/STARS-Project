@@ -17,8 +17,6 @@ public class PlanetRender : MonoBehaviour
         private GameObject labelParent;
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
-    public bool showBelowHorizon = false;
-    private bool labelVisible = true;
     public float skyRadius = 100f;
 [Header("Planet Materials")]
 public Material mercuryMat;
@@ -29,6 +27,8 @@ public Material jupiterMat;
 public Material saturnMat;
 public Material uranusMat;
 public Material neptuneMat;
+
+UnityEngine.Vector3 sunDir = UnityEngine.Vector3.zero;
     private Dictionary<string, GameObject> spawnedPlanets =
         new Dictionary<string, GameObject>();
 
@@ -60,8 +60,49 @@ public Material neptuneMat;
         double latitudeRad =
             AstronomyTime.DegToRad(SkySession.Instance.LatitudeDeg);
 
+foreach (Planet planet in planetLoader.planets)
+{
+    if (planet.body != "Sun") continue;
+
+    if (double.IsNaN(planet.raDeg) || double.IsNaN(planet.decDeg))
+        continue;
+
+    double haDeg = AstronomyTime.HourAngleDeg(lst, planet.raDeg);
+
+    double haRad = AstronomyTime.DegToRad(haDeg);
+    double decRad = AstronomyTime.DegToRad(planet.decDeg);
+
+    double sinAlt =
+        Math.Sin(decRad) * Math.Sin(latitudeRad) +
+        Math.Cos(decRad) * Math.Cos(latitudeRad) * Math.Cos(haRad);
+
+    double altRad = Math.Asin(sinAlt);
+
+    double cosAz =
+        (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
+        (Math.Cos(altRad) * Math.Cos(latitudeRad));
+
+    cosAz = Math.Clamp(cosAz, -1.0, 1.0);
+
+    double azRad = Math.Acos(cosAz);
+
+    if (Math.Sin(haRad) > 0)
+        azRad = 2 * Math.PI - azRad;
+
+    UnityEngine.Vector3 position = new UnityEngine.Vector3(
+        (float)(skyRadius * Math.Cos(altRad) * Math.Sin(azRad)),
+        (float)(skyRadius * Math.Sin(altRad)),
+        (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))
+    );
+
+    sunDir = position.normalized;
+    UnityEngine.Debug.Log("Sun Direction: " + sunDir);
+    break; // stop once found
+}
         foreach (Planet planet in planetLoader.planets)
         {
+            if(planet.body == "Sun")
+                continue;
             if (double.IsNaN(planet.raDeg) || double.IsNaN(planet.decDeg))
                 continue;
 
@@ -78,8 +119,8 @@ public Material neptuneMat;
             double altRad = Math.Asin(sinAlt);
 
             // === MATCH SKYMAP: skip below horizon ===
-            if (!showBelowHorizon && altRad <= 0)
-                continue;
+            //if (altRad <= 0)
+                //continue;
             double cosAz =
                 (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
                 (Math.Cos(altRad) * Math.Cos(latitudeRad));
@@ -96,7 +137,6 @@ public Material neptuneMat;
                 (float)(skyRadius * Math.Sin(altRad)),
                 (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))
             );
-
         GameObject obj =
             Instantiate(planetPrefab, position, Quaternion.identity, transform);
 
@@ -107,6 +147,14 @@ public Material neptuneMat;
         {
             Renderer renderer = obj.GetComponentInChildren<Renderer>();
             renderer.material = mat;
+            if(planet.body == "Moon" && renderer != null)
+                {
+                    if(sunDir != UnityEngine.Vector3.zero)
+                    {
+                        renderer.material.SetVector("_SunDir", sunDir);
+                        UnityEngine.Debug.Log("Set Moon shader _SunDir to: " + sunDir);
+                    }
+                }
         }
 
         // === Magnitude scaling ===
@@ -127,14 +175,13 @@ public Material neptuneMat;
 
     public void SetLabelsVisible(bool visible)
     {
-        labelVisible = visible;
         if (labelParent == null)
             RenderPlanets();
 
         labelParent.SetActive(visible);
     }
 
-private void CreateLabel(string planetName, Vector3 planetPosition)
+private void CreateLabel(string planetName, UnityEngine.Vector3 planetPosition)
 {
     if (planetLabelPrefab == null)
     {
@@ -143,14 +190,14 @@ private void CreateLabel(string planetName, Vector3 planetPosition)
     }
 
     // Move label slightly outward from sky dome
-    Vector3 labelPosition =
+    UnityEngine.Vector3 labelPosition =
         planetPosition.normalized * (skyRadius + labelOffset);
 
     // Instantiate label
     GameObject label = Instantiate(
         planetLabelPrefab,
         labelPosition,
-        Quaternion.identity,
+        UnityEngine.Quaternion.identity,
         labelParent.transform
     );
 
@@ -158,7 +205,7 @@ private void CreateLabel(string planetName, Vector3 planetPosition)
 
         textMesh.text = planetName;
 
-    label.transform.localScale = Vector3.one * labelScale;
+    label.transform.localScale = UnityEngine.Vector3.one * labelScale;
 
         label.transform.LookAt(Camera.main.transform);
         label.transform.Rotate(0, 180f, 0);
@@ -200,15 +247,6 @@ Material getPlanetMaterial(string body)
             default:
                 return null;
         }
-    }
-
-    public void OnHorizonToggleChanged(bool value)
-    {
-        showBelowHorizon = value;
-        RenderPlanets();
-        
-        // If planet labels were hidden, make sure they stay hidden when toggling planets under the horizon.
-        labelParent.SetActive(labelVisible); 
     }
 
 }

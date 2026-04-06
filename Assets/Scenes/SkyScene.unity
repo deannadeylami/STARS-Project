@@ -155,10 +155,10 @@ MonoBehaviour:
   labelColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   planetLoader: {fileID: 40056113}
   planetPrefab: {fileID: 775357564}
-  showBelowHorizon: 0
   skyRadius: 100
   mercuryMat: {fileID: 2100000, guid: e2d7a0febf7f33a4c823b8b687214d85, type: 2}
   venusMat: {fileID: 2100000, guid: 5dffeacac0240de45bf092e19e346ab3, type: 2}
+  moonMat: {fileID: 2100000, guid: 057799536f7e738489a323e8e5d4844a, type: 2}
   marsMat: {fileID: 2100000, guid: 75d9bf59ba7c413449ccadc38eee6848, type: 2}
   jupiterMat: {fileID: 2100000, guid: 1a256f4f619a0524188256aabcfb9ca4, type: 2}
   saturnMat: {fileID: 2100000, guid: d4b2fe9bebb30a04db776d84f3c0c782, type: 2}
