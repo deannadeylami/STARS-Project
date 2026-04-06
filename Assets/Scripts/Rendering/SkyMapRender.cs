@@ -36,9 +36,11 @@ public class SkyMapRenderer : MonoBehaviour
     }
 
     public Dictionary<int, Vector3> StarPositions = new Dictionary<int, Vector3>();
-
+    public List<StarRecord> RenderedStars = new List<StarRecord>();
     public void RenderSky()
     {
+        RenderedStars.Clear();
+
         if (SkySession.Instance == null)
         {
             Debug.LogError("SkySession missing from scene.");
@@ -125,7 +127,8 @@ public class SkyMapRenderer : MonoBehaviour
 
             float alpha = Mathf.Lerp(1.0f, 0.15f, Mathf.Pow(t, 1.3f));
             p.startColor = new Color(1f, 1f, 1f, alpha);
-
+            
+            RenderedStars.Add(star);
             particleList.Add(p);
 
             if (star.hip > 0)
@@ -138,6 +141,7 @@ public class SkyMapRenderer : MonoBehaviour
         ps.SetParticles(particles, particles.Length);
 
         Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
+        FindObjectOfType<StarHoverTooltip>()?.Rebuild();
     }
 
     public void OnHorizonToggleChanged(bool value)
