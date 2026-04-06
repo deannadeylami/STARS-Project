@@ -10,7 +10,6 @@ public class SettingsMenu : MonoBehaviour
     public CameraControllerNew cameraController;
     public GameObject Ground;
     public Toggle horizonToggle;
-    public Toggle groundToggle;
     private CameraControl controls;
 
     private void Awake()
@@ -60,30 +59,7 @@ public class SettingsMenu : MonoBehaviour
     // Disables ground toggle when below-horizon stars are generated to avoid label clipping bug.
     public void OnHorizonToggle(bool value)
     {
-        if (value)
-        {
-            groundToggle.isOn = false;
-            groundToggle.interactable = false;
-        }
-        else
-        {
-            groundToggle.interactable = true;
-        }
-    }
-
-    // Called by "Enable Ground" toggle.
-    // Disables below-horizon stars toggle when ground toggle is on to avoid label clipping bug.
-    public void OnGroundToggle(bool value)
-    {
-        if (value)
-        {
-            horizonToggle.isOn = false;
-            horizonToggle.interactable = false;
-        }
-        else
-        {
-            horizonToggle.interactable = true;
-        }
+        Ground.SetActive(!value);
     }
 
     // Close out the application.
