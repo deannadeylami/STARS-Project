@@ -1,0 +1,90 @@
+name: Build, Sign and Attest Unity
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  id-token: write
+  contents: write
+  attestations: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.targetPlatform }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        targetPlatform:
+          - StandaloneWindows64
+          - StandaloneLinux64
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/cache@v3
+        with:
+          path: Library
+          key: Library-${{ matrix.targetPlatform }}-${{ hashFiles('Assets/**','Packages/**','ProjectSettings/**') }}
+          restore-keys: Library-${{ matrix.targetPlatform }}-
+
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_SERIAL:   ${{ secrets.UNITY_SERIAL }}
+          UNITY_EMAIL:    ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: ${{ matrix.targetPlatform }}
+          buildName: STARSProject
+          buildsPath: build
+
+      - name: Zip build
+        id: zip
+        run: |
+          ZIPNAME="STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip"
+          cd build/${{ matrix.targetPlatform }}
+          zip -r "../../${ZIPNAME}" .
+          cd ../..
+          echo "name=${ZIPNAME}" >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.name }}
+          path: ${{ steps.zip.outputs.name }}
+
+  sign-and-publish:
+    name: Sign and Publish (${{ matrix.targetPlatform }})
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        targetPlatform:
+          - StandaloneWindows64
+          - StandaloneLinux64
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip
+
+      - name: Generate SHA256
+        run: |
+          ZIPNAME="STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip"
+          sha256sum "${ZIPNAME}" | tee "${ZIPNAME}.sha256"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip
+
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip
+            STARSProject-${{ matrix.targetPlatform }}-${{ github.ref_name }}.zip.sha256
