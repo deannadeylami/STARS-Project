@@ -13,6 +13,7 @@ public class StarLabel : MonoBehaviour
     private GameObject labelParent; //Parent object for all labels
     public bool showBelowHorizon = false; //Toggle for whether stars below the horizon should be rendered.
     public bool labelVisible = true;
+    public event Action<bool> OnLabelsVisibilityChanged;
 
     [Header("Label Settings")]
     public float labelScale = 1f;   // Constant size for all labels
@@ -131,6 +132,8 @@ public class StarLabel : MonoBehaviour
             RenderLabels();
 
         labelParent.SetActive(visible);
+
+        OnLabelsVisibilityChanged?.Invoke(visible);
     }
 
 
