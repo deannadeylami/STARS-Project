@@ -1,20 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using UnityEngine;
 
 
 
 public class PlanetRender : MonoBehaviour
 {
-        public GameObject planetLabelPrefab;
+    public GameObject planetLabelPrefab;
 
-        [Header("Label Settings")]
-        public float labelOffset = 1.5f;
-        public float labelScale = 1f;
-        public Color labelColor = Color.yellow;
-        private List<GameObject> activeLabels = new List<GameObject>();
-        private GameObject labelParent;
+    [Header("Label Settings")]
+     public float labelOffset = 1.5f;
+    public float labelScale = 1f;
+    public UnityEngine.Color labelColor = UnityEngine.Color.purple;
+    private List<GameObject> activeLabels = new List<GameObject>();
+    private GameObject labelParent;
     public PlanetCSVReader planetLoader;
     public GameObject planetPrefab;
     public float skyRadius = 100f;
@@ -204,7 +205,7 @@ private void CreateLabel(string planetName, UnityEngine.Vector3 planetPosition)
     TextMesh textMesh = label.GetComponent<TextMesh>();
 
         textMesh.text = planetName;
-
+        textMesh.color = labelColor;
     label.transform.localScale = UnityEngine.Vector3.one * labelScale;
 
         label.transform.LookAt(Camera.main.transform);

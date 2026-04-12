@@ -152,7 +152,7 @@ MonoBehaviour:
   planetLabelPrefab: {fileID: 6853032887616607980, guid: 0d5e6a296f4cba54abb9c52a1796b949, type: 3}
   labelOffset: 1.5
   labelScale: 1
-  labelColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  labelColor: {r: 0, g: 0.7490196, b: 1, a: 1}
   planetLoader: {fileID: 40056113}
   planetPrefab: {fileID: 775357564}
   skyRadius: 100
@@ -899,7 +899,7 @@ Transform:
   m_GameObject: {fileID: 299332701}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 811.114, y: 639.56067, z: -0.42999}
+  m_LocalPosition: {x: 811.114, y: 639.56067, z: 258}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9240,9 +9240,10 @@ MonoBehaviour:
   lineMaterial: {fileID: 2100000, guid: 70ea49740e2c3da44b9bc661fabd30c1, type: 2}
   lineWidth: 0.05
   labelOffset: 2
-  labelSize: 1
-  labelColor: {r: 0, g: 0, b: 1, a: 1}
+  minScale: 0.3
+  maxScale: 50
   skyMap: {fileID: 1588375754}
+  fontAsset: {fileID: 0}
 --- !u!4 &1849985794
 Transform:
   m_ObjectHideFlags: 0
