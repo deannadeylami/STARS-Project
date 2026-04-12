@@ -84,10 +84,6 @@ public class StarChartExporter2D : MonoBehaviour
     [Header("Legend & Magnitude Key")]
     [Tooltip("Draw a titled, bordered legend box showing visible solar system bodies.")]
     public bool enableLegend = true;
-    [Tooltip("Draw a magnitude scale key showing relative star dot sizes.")]
-    public bool enableMagnitudeKey = true;
-    [Tooltip("Number of magnitude steps shown in the key (e.g. 5 = mag 0,1,2,3,4).")]
-    [Range(3, 6)] public int magnitudeKeySteps = 5;
     public Color32 legendBorderColor = new Color32(100, 100, 120, 255);
 
     // -----------------------------------------------------------------------
@@ -154,7 +150,7 @@ public class StarChartExporter2D : MonoBehaviour
 
     [Header("Star Labels")]
     public bool enableStarLabels = true;
-    public float maxStarLabelMagnitude = 2.5f;
+    public float maxStarLabelMagnitude = 1.5f;
     [Range(1, 4)]
     public int starLabelFontScale = 1;
     public Color32 starLabelColor = new Color32(200, 200, 200, 255);
@@ -169,8 +165,8 @@ public class StarChartExporter2D : MonoBehaviour
     public bool refraction = true;
 
     [Header("Planet Style")]
-    [Range(1f, 10f)]  public float planetDotRadiusPx  = 2.5f;
-    [Range(2f, 16f)]  public float planetRingRadiusPx = 5.5f;
+    [Range(1f, 10f)]  public float planetDotRadiusPx  = 5.0f;
+    [Range(2f, 16f)]  public float planetRingRadiusPx = 10.0f;
     [Range(1, 4)]     public int   planetRingThicknessPx = 1;
     [Tooltip("Skip planets dimmer than this magnitude. Set 99 to draw all.")]
     public float planetMagnitudeLimit = 99f;
@@ -556,29 +552,23 @@ public class StarChartExporter2D : MonoBehaviour
     }
 
     // =======================================================================
-    // PUBLIC BUTTONS – one per format, each calls the shared private helper
+    // PUBLIC BUTTONS
     // =======================================================================
 
     /// <summary>Button 1 – Square chart exported as JPEG.</summary>
-    public async void Export2DChartJpeg()       => await DoExportSquare(asPng: false);
+    public async void Export2DChartJpeg()      => await DoExportSquare();
 
-    /// <summary>Button 2 – Square chart exported as lossless PNG.</summary>
-    public async void Export2DChartPng()        => await DoExportSquare(asPng: true);
-
-    /// <summary>Button 3 – 8.5×11 print page exported as JPEG.</summary>
-    public async void Export2DChartPrintJpeg()  => await DoExportPrint(asPng: false);
-
-    /// <summary>Button 4 – 8.5×11 print page exported as lossless PNG.</summary>
-    public async void Export2DChartPrintPng()   => await DoExportPrint(asPng: true);
+    /// <summary>Button 2 – 8.5×11 print page exported as JPEG.</summary>
+    public async void Export2DChartPrint()     => await DoExportPrint();
 
     // =======================================================================
     // PRIVATE HELPERS
     // =======================================================================
 
     // -----------------------------------------------------------------------
-    // Square / JPEG canvas export
+    // Square JPEG export
     // -----------------------------------------------------------------------
-    private async Task DoExportSquare(bool asPng)
+    private async Task DoExportSquare()
     {
         if (_isExporting)
         {
@@ -604,7 +594,7 @@ public class StarChartExporter2D : MonoBehaviour
 
             int titleH  = BitmapFont5x7.MeasureHeight(titleFontScale);
             int metaH   = BitmapFont5x7.MeasureHeight(metaFontScale);
-            int headerH = marginPx + titleH + 6 * metaFontScale + metaH + 8 * metaFontScale;
+            int headerH = marginPx + titleH + 6 * metaFontScale + metaH + marginPx;
 
             int availH    = height - headerH - marginPx;
             int chartDiam = Mathf.Max(64, Mathf.Min(width - 2 * marginPx, availH));
@@ -643,12 +633,11 @@ public class StarChartExporter2D : MonoBehaviour
                 latDeg, lonDeg, precomputedBodies,
                 invertColors: false);
 
-            string ext  = asPng ? "png" : "jpg";
-            string name = $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.{ext}";
-            if (!TryGetSavePath(name, ext, out string file))
+            string name = $"StarChart2D_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg";
+            if (!TryGetSavePath(name, "jpg", out string file))
             { OnExportFailed?.Invoke("Save cancelled."); return; }
 
-            WriteFile(file, EncodePixels(pixels, width, height, asPng));
+            WriteFile(file, PixelsToJpeg(pixels, width, height, jpegQuality));
             LogStats(file, stats, latDeg, lonDeg);
             OnExportComplete?.Invoke(file);
         }
@@ -656,9 +645,9 @@ public class StarChartExporter2D : MonoBehaviour
     }
 
     // -----------------------------------------------------------------------
-    // 8.5 × 11 print page export
+    // 8.5 × 11 print page JPEG export
     // -----------------------------------------------------------------------
-    private async Task DoExportPrint(bool asPng)
+    private async Task DoExportPrint()
     {
         if (_isExporting)
         {
@@ -732,12 +721,11 @@ public class StarChartExporter2D : MonoBehaviour
                     0, 0, pageW - 1, pageH - 1,
                     printFrameThicknessPx, printFrameColor);
 
-            string ext  = asPng ? "png" : "jpg";
-            string name = $"StarChart_Print_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.{ext}";
-            if (!TryGetSavePath(name, ext, out string file))
+            string name = $"StarChart_Print_{dtStr}_lat{latDeg:F4}_lon{lonDeg:F4}.jpg";
+            if (!TryGetSavePath(name, "jpg", out string file))
             { OnExportFailed?.Invoke("Save cancelled."); return; }
 
-            WriteFile(file, EncodePixels(pixels, pageW, pageH, asPng));
+            WriteFile(file, PixelsToJpeg(pixels, pageW, pageH, jpegQuality));
             LogStats(file, stats, latDeg, lonDeg);
             OnExportComplete?.Invoke(file);
         }
@@ -771,16 +759,19 @@ public class StarChartExporter2D : MonoBehaviour
         int titleH       = BitmapFont5x7.MeasureHeight(titleFontScale);
         int metaH        = BitmapFont5x7.MeasureHeight(metaFontScale);
         int lineGap      = Mathf.Max(2, metaFontScale * 3);
-        int headerBlockH = titleH + lineGap + metaH;
-        int discTop      = chartCy - Mathf.RoundToInt(chartRadius);
-        int headerBotY   = discTop - marginPx / 2;
-        int headerTopY   = Mathf.Max(2, headerBotY - headerBlockH);
+
+        // Pin the title to the top margin of the canvas so it always sits at
+        // the very top with the disc below it, rather than floating just above
+        // the disc. This creates clear breathing room between the metadata and
+        // the chart circle regardless of how much header space is reserved.
+        int titleY = marginPx;
+        int metaY  = titleY + titleH + lineGap;
 
         {
             string title = "STARS";
             int tw = BitmapFont5x7.MeasureWidth(title, titleFontScale);
             BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
-                chartCx - tw / 2, headerTopY, title, titleFontScale, titleCol);
+                chartCx - tw / 2, titleY, title, titleFontScale, titleCol);
         }
         {
             string localStr = SkySession.Instance.LocalDateTime.ToString(
@@ -788,13 +779,8 @@ public class StarChartExporter2D : MonoBehaviour
             string meta = $"LAT {latDeg:+0.0000;-0.0000}  LON {lonDeg:+0.0000;-0.0000}   {localStr}";
             int tw = BitmapFont5x7.MeasureWidth(meta, metaFontScale);
             BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
-                chartCx - tw / 2, headerTopY + titleH + lineGap, meta, metaFontScale, metaCol);
+                chartCx - tw / 2, metaY, meta, metaFontScale, metaCol);
         }
-
-        // ---- Magnitude key ------------------------------------------------
-        if (enableMagnitudeKey)
-            DrawMagnitudeKey(pixels, canvasW, canvasH, chartCx, chartCy, chartRadius,
-                marginPx, metaFontScale, invertColors, legendInMargin);
 
         // ---- Legend -------------------------------------------------------
         if (!enableLegend) return;
@@ -811,10 +797,10 @@ public class StarChartExporter2D : MonoBehaviour
 
         if (legendBodies.Count == 0) return;
 
-        int legendFontScale = metaFontScale;
+        int legendFontScale = metaFontScale + 1;   // one step larger than metadata text
         int legendTextH     = BitmapFont5x7.MeasureHeight(legendFontScale);
-        int rowH            = Mathf.Max(legendTextH, 14) + Mathf.Max(2, legendFontScale * 2);
-        float symDotR       = Mathf.Max(2f, legendFontScale * 1.8f);
+        int rowH            = Mathf.Max(legendTextH, 18) + Mathf.Max(3, legendFontScale * 3);
+        float symDotR       = Mathf.Max(4f, legendFontScale * 2.8f);   // noticeably larger symbols
         int symColW         = Mathf.RoundToInt(symDotR * 5f);
         int divGap          = Mathf.Max(3, legendFontScale * 2);
         int nameColX        = symColW + divGap * 2 + 1;
@@ -930,104 +916,6 @@ public class StarChartExporter2D : MonoBehaviour
             BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
                 cellX + nameColX, cellY + (rowH - legendTextH) / 2,
                 SanitizeLabel(body.name), legendFontScale, legendCol);
-        }
-    }
-
-    // =======================================================================
-    // Magnitude key — bottom-right, outside the disc, bordered + titled
-    // =======================================================================
-    private void DrawMagnitudeKey(
-        Color32[] pixels, int canvasW, int canvasH,
-        int chartCx, int chartCy, float chartRadius,
-        int marginPx, int fontScale,
-        bool invertColors, bool inMargin)
-    {
-        Color32 textCol   = invertColors ? new Color32(40,  40,  40,  255) : new Color32(190, 190, 190, 255);
-        Color32 borderCol = invertColors ? new Color32(80,  80,  100, 255) : legendBorderColor;
-
-        int textH   = BitmapFont5x7.MeasureHeight(fontScale);
-        int steps   = magnitudeKeySteps;
-        int rowH    = Mathf.Max(textH, 14) + Mathf.Max(2, fontScale * 2);
-
-        // Match dot radii to how the chart rasteriser sizes them
-        float[] radii = new float[steps];
-        for (int m = 0; m < steps; m++)
-        {
-            float t  = Mathf.InverseLerp(0f, 6f, m);
-            float r  = Mathf.Lerp(maxStarRadiusPx, minStarRadiusPx, Mathf.Pow(t, 1.7f));
-            radii[m] = Mathf.Clamp(r * (fontScale * 0.6f), 1.5f, rowH / 2f - 1f);
-        }
-
-        int dotColW   = Mathf.Max(Mathf.RoundToInt(radii[0] * 2f) + 4, 10);
-        int labelColX = dotColW + Mathf.Max(3, fontScale * 2);
-        int maxLabelW = BitmapFont5x7.MeasureWidth("MAG 0", fontScale);
-        int colW      = labelColX + maxLabelW + Mathf.Max(4, fontScale * 3);
-
-        int ltScale = Mathf.Max(1, fontScale);
-        int ltH     = BitmapFont5x7.MeasureHeight(ltScale);
-        int ltGap   = Mathf.Max(2, fontScale * 2);
-        int bodyH   = steps * rowH;
-        int fullH   = ltH + ltGap + bodyH;
-
-        int padX = Mathf.Max(3, fontScale * 2);
-        int padY = Mathf.Max(3, fontScale * 2);
-        int pad  = Mathf.Max(4, marginPx / 4);
-
-        int discBottom = chartCy + Mathf.RoundToInt(chartRadius);
-        int discRight  = chartCx + Mathf.RoundToInt(chartRadius);
-
-        int keyX, keyY;
-        if (inMargin)
-        {
-            int bmTop  = discBottom + Mathf.Max(4, marginPx / 4);
-            int bmBot  = canvasH - marginPx;
-            int avail  = bmBot - bmTop;
-            keyX = canvasW - marginPx - colW - padX;
-            keyY = avail > fullH ? bmTop + (avail - fullH) / 2 : bmTop;
-            keyY = Mathf.Clamp(keyY, bmTop, Mathf.Max(bmTop, canvasH - fullH - padY - pad));
-        }
-        else
-        {
-            keyX = discRight - colW - padX;
-            if (keyX + colW + padX * 2 > canvasW - pad)
-                keyX = canvasW - colW - padX * 2 - pad;
-            keyY = discBottom - fullH - padY;
-            keyY = Mathf.Clamp(keyY, marginPx + padY, canvasH - fullH - padY - pad);
-        }
-
-        // Border
-        DrawRectOutline(pixels, canvasW, canvasH,
-            keyX - padX, keyY - padY,
-            keyX - padX + colW + padX * 2,
-            keyY - padY + fullH + padY * 2,
-            1, borderCol);
-
-        // Title "MAGNITUDE"
-        {
-            string ttxt = "MAGNITUDE";
-            int tw = BitmapFont5x7.MeasureWidth(ttxt, ltScale);
-            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
-                keyX + (colW - tw) / 2, keyY, ttxt, ltScale, borderCol);
-            int sepY = keyY + ltH + ltGap / 2;
-            DrawLineThick(pixels, canvasW, canvasH,
-                keyX - padX + 1, sepY, keyX - padX + colW + padX * 2 - 2, sepY, borderCol, 1);
-        }
-
-        int rowsY = keyY + ltH + ltGap;
-
-        for (int m = 0; m < steps; m++)
-        {
-            int cy2 = rowsY + m * rowH + rowH / 2;
-            int cx2 = keyX + dotColW / 2;
-
-            if (invertColors)
-                DrawSoftDotOnWhite(pixels, canvasW, canvasH, cx2, cy2, radii[m], 0.9f);
-            else
-                DrawSoftDot(pixels, canvasW, canvasH, cx2, cy2, radii[m], 0.95f);
-
-            int ty2 = rowsY + m * rowH + (rowH - textH) / 2;
-            BitmapFont5x7.DrawText(pixels, canvasW, canvasH,
-                keyX + labelColX, ty2, $"MAG {m}", fontScale, textCol);
         }
     }
 
@@ -1259,20 +1147,6 @@ public class StarChartExporter2D : MonoBehaviour
         Destroy(tex);
         return jpg;
     }
-
-    private static byte[] PixelsToPng(Color32[] pixels, int w, int h)
-    {
-        var tex = new Texture2D(w, h, TextureFormat.RGB24, false);
-        tex.SetPixels32(pixels);
-        tex.Apply(false, false);
-        var png = tex.EncodeToPNG();
-        Destroy(tex);
-        return png;
-    }
-
-    /// <summary>Encode pixels to JPEG or PNG depending on the asPng flag.</summary>
-    private byte[] EncodePixels(Color32[] pixels, int w, int h, bool asPng)
-        => asPng ? PixelsToPng(pixels, w, h) : PixelsToJpeg(pixels, w, h, jpegQuality);
 
     private static void WriteFile(string path, byte[] data)
     {
