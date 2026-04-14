@@ -10,6 +10,7 @@ public class ConstellationRenderer : MonoBehaviour
     public string fileName = "constellations_with_names.txt";
     public Material lineMaterial;
     public float lineWidth = 0.05f;
+    private GameObject labelParent; // Parent container for label objects so we can toggle them independently.
     private List<GameObject> labels = new List<GameObject> ();
     public float labelOffset = 2f;
 
@@ -25,6 +26,9 @@ public class ConstellationRenderer : MonoBehaviour
 
     void Start()
     {
+        labelParent = new GameObject("ConstellationLabels");
+        labelParent.transform.parent = transform;
+
         if (skyMap == null)
         {
             Debug.LogError("SkyMapRenderer not assigned!");
@@ -80,7 +84,7 @@ public class ConstellationRenderer : MonoBehaviour
         Vector3 labelPos = center.normalized * (center.magnitude + labelOffset); 
 
         GameObject textObj = new GameObject($"{c.Abbrev}_Label");
-        textObj.transform.parent = this.transform; 
+        textObj.transform.parent = labelParent.transform;
         textObj.transform.position = labelPos; 
 
         var tmp = textObj.AddComponent<TextMeshPro>();
@@ -124,4 +128,11 @@ public class ConstellationRenderer : MonoBehaviour
         gameObject.SetActive(visible);
         OnConstellationsVisibilityChanged?.Invoke(visible);
     }
+
+    public void SetLabelsVisible(bool visible)
+    {
+        if (labelParent != null)
+            labelParent.SetActive(visible);
+    }
+
 }

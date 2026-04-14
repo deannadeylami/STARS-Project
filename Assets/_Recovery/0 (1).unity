@@ -1079,8 +1079,8 @@ MonoBehaviour:
   cameraController: {fileID: 963194230}
   Ground: {fileID: 1221493960}
   horizonToggle: {fileID: 1233139174}
-  constellationRenderer: {fileID: 1849985793}
-  constellationLabelToggle: {fileID: 1272372344}
+  constellationRenderer: {fileID: 0}
+  constellationLabelToggle: {fileID: 0}
 --- !u!1 &394258446
 GameObject:
   m_ObjectHideFlags: 0
@@ -1299,9 +1299,9 @@ MonoBehaviour:
   onValueChanged:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 381984646}
-        m_TargetAssemblyTypeName: SettingsMenu, Assembly-CSharp
-        m_MethodName: OnConstellationToggle
+      - m_Target: {fileID: 1849985793}
+        m_TargetAssemblyTypeName: ConstellationRenderer, Assembly-CSharp
+        m_MethodName: SetConstellationsVisible
         m_Mode: 0
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
