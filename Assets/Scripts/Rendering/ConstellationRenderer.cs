@@ -11,7 +11,10 @@ public class ConstellationRenderer : MonoBehaviour
     public Material lineMaterial;
     public float lineWidth = 0.05f;
     private GameObject labelParent; // Parent container for label objects so we can toggle them independently.
+    public bool showBelowHorizon = false;
+    private bool labelsVisible = true;
     private List<GameObject> labels = new List<GameObject> ();
+    private List<GameObject> lineObjects = new List<GameObject>();
     public float labelOffset = 2f;
 
     public float minScale = 0.3f;
@@ -19,6 +22,8 @@ public class ConstellationRenderer : MonoBehaviour
     
    // public Color labelColor = new Color(1f, 0.85f, 0.4f); 
     public SkyMapRenderer skyMap;
+
+    private ConstellationCatalog.Catalog catalog;
 
     public TMP_FontAsset fontAsset;
 
@@ -35,13 +40,10 @@ public class ConstellationRenderer : MonoBehaviour
             return;
         }
 
-        var catalog = ConstellationCatalog.LoadFromStreamingAssets(fileName);
+        catalog = ConstellationCatalog.LoadFromStreamingAssets(fileName);
 
-        foreach (var constellation in catalog.All)
-        {
-            DrawConstellation(constellation);
-            CreateLabel(constellation);
-        }
+        RenderAll();
+
     }
 
     void DrawConstellation(ConstellationCatalog.Constellation c)
@@ -126,13 +128,49 @@ public class ConstellationRenderer : MonoBehaviour
     public void SetConstellationsVisible(bool visible)
     {
         gameObject.SetActive(visible);
+        if (visible) RenderAll();
         OnConstellationsVisibilityChanged?.Invoke(visible);
     }
 
     public void SetLabelsVisible(bool visible)
     {
+        labelsVisible = visible;
         if (labelParent != null)
             labelParent.SetActive(visible);
+    }
+
+    void ClearAll()
+    {
+        foreach (var line in lineObjects)
+        {
+            if (line != null)
+                Destroy(line);
+        }
+        lineObjects.Clear();
+
+        foreach (var label in labels)
+        {
+            if (label != null)
+                Destroy(label);
+        }
+        labels.Clear();
+    }
+
+    void RenderAll()
+    {
+        ClearAll();
+        foreach (var constellation in catalog.All)
+        {
+            DrawConstellation(constellation);
+            CreateLabel(constellation);
+        }
+        labelParent.SetActive(labelsVisible);
+    }
+
+    public void OnHorizonToggleChanged(bool value)
+    {
+        showBelowHorizon = value;
+        RenderAll();
     }
 
 }

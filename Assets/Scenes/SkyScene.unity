@@ -153,6 +153,7 @@ MonoBehaviour:
   labelOffset: 1.5
   labelScale: 1
   labelColor: {r: 0, g: 0.7490196, b: 1, a: 1}
+  showBelowHorizon: 0
   planetLoader: {fileID: 40056113}
   planetPrefab: {fileID: 775357564}
   skyRadius: 100
@@ -3211,6 +3212,18 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 40056112}
         m_TargetAssemblyTypeName: PlanetRender, Assembly-CSharp
+        m_MethodName: OnHorizonToggleChanged
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1849985793}
+        m_TargetAssemblyTypeName: ConstellationRenderer, Assembly-CSharp
         m_MethodName: OnHorizonToggleChanged
         m_Mode: 0
         m_Arguments:
@@ -9499,11 +9512,12 @@ MonoBehaviour:
   fileName: constellations_with_names.txt
   lineMaterial: {fileID: 2100000, guid: 70ea49740e2c3da44b9bc661fabd30c1, type: 2}
   lineWidth: 0.05
+  showBelowHorizon: 0
   labelOffset: 2
   minScale: 0.3
   maxScale: 50
   skyMap: {fileID: 1588375754}
-  fontAsset: {fileID: 0}
+  fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
 --- !u!4 &1849985794
 Transform:
   m_ObjectHideFlags: 0
