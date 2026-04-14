@@ -75,7 +75,7 @@ public class CameraControllerNew : MonoBehaviour
     {
         // Stores the scroll wheel input value to be used in Update().
         zoomInput = context.ReadValue<float>();
-        Debug.Log(zoomInput);
+        // Debug.Log(zoomInput);
     }
 
     public void EnableControls()

@@ -11,7 +11,7 @@ public class SettingsMenu : MonoBehaviour
     public GameObject Ground;
     public Toggle horizonToggle;
     private CameraControl controls;
-
+    public HorizonLine horizonLine;
     private void Awake()
     {
         controls = new CameraControl();
@@ -53,13 +53,19 @@ public class SettingsMenu : MonoBehaviour
     public void ToggleGround(bool enabled)
     {
         Ground.SetActive(enabled);
+        // Dotted horizon line is the visual fallback when the ground is hidden
+        if (horizonLine != null)
+            horizonLine.SetVisible(!enabled);
     }
     
-    // Called by "Generate Stars under Horizon" toggle.
-    // Disables ground toggle when below-horizon stars are generated to avoid label clipping bug.
+    // Replace OnHorizonToggle with:
     public void OnHorizonToggle(bool value)
     {
         Ground.SetActive(!value);
+
+        // Keep horizon line in sync: visible when ground is off
+        if (horizonLine != null)
+            horizonLine.SetVisible(value);
     }
 
     // Close out the application.
