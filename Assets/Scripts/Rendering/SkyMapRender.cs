@@ -8,7 +8,6 @@ public class SkyMapRenderer : MonoBehaviour
 {
     public HYGCatalogParser catalog;
     public float skyRadius = 100f;
-
     private ParticleSystem ps;
     private ParticleSystem.Particle[] particles;
 
@@ -17,7 +16,19 @@ public class SkyMapRenderer : MonoBehaviour
     //Toggle for whether stars below the horizon should be rendered
     public bool showBelowHorizon = false; 
     public GameObject groundObject;
-
+    [SerializeField] public bool gpuAccel = false;
+    struct StarData
+    {
+        public UnityEngine.Vector3 position;
+        public float size;
+        public float alpha;
+    }
+    // GPU rendering Components
+    public Mesh quadMesh;
+    public Material starGPUMaterial;
+    public ComputeBuffer starBuffer;
+    private ComputeBuffer argsBuffer;
+    private List<StarData> starDataList = new List<StarData>();
     
     void Start()
     {
@@ -31,14 +42,19 @@ public class SkyMapRenderer : MonoBehaviour
         main.simulationSpace = ParticleSystemSimulationSpace.Local;
         main.startSpeed = 0;
         main.startLifetime = Mathf.Infinity;
+        if(quadMesh == null)
+        {
+            quadMesh = CreateQuad();
+        }
 
         RenderSky();
     }
 
-    public Dictionary<int, Vector3> StarPositions = new Dictionary<int, Vector3>();
+    public Dictionary<int, UnityEngine.Vector3> StarPositions = new Dictionary<int, UnityEngine.Vector3>();
 
     public void RenderSky()
     {
+        starDataList.Clear();
         if (SkySession.Instance == null)
         {
             Debug.LogError("SkySession missing from scene.");
@@ -103,46 +119,150 @@ public class SkyMapRenderer : MonoBehaviour
             if (azRad < 0) azRad += 2.0 * Math.PI;
 
             // Convert spherical (alt, az) to 3D position on dome
-            Vector3 position = new Vector3(
+            UnityEngine.Vector3 position = new UnityEngine.Vector3(
                 (float)(skyRadius * Math.Cos(altRad) * Math.Sin(azRad)), // X
                 (float)(skyRadius * Math.Sin(altRad)),                  // Y
                 (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))  // Z
             );
 
-            ParticleSystem.Particle p = new ParticleSystem.Particle
-            {
-                position = position,
-                remainingLifetime = Mathf.Infinity
-            };
-
-            // --- Improved magnitude mapping ---
             float t = Mathf.InverseLerp(0f, catalog.magnitudeLimit, star.mag);
             float curved = Mathf.Pow(t, 1.7f);
+            float maxSize;
+            float minSize;
+            if(!gpuAccel)
+            {
+                maxSize = 4.5f;
+                minSize = 0.5f;                
+            }
+            else
+            {
+                // GPU can handle smaller stars better, so we can be more aggressive with size falloff
+                maxSize = 0.5f;
+                minSize = 0.2f;
+            }
+            StarData data = new StarData
+            {
+                position = position,
+                size = Mathf.Lerp(maxSize, minSize, curved),
+                alpha = Mathf.Lerp(1.0f, 0.15f, Mathf.Pow(t, 1.3f))
+            };
 
-            float maxSize = 4.5f;
-            float minSize = 0.5f;
-            p.startSize = Mathf.Lerp(maxSize, minSize, curved);
-
-            float alpha = Mathf.Lerp(1.0f, 0.15f, Mathf.Pow(t, 1.3f));
-            p.startColor = new Color(1f, 1f, 1f, alpha);
-
-            particleList.Add(p);
+            starDataList.Add(data);
 
             if (star.hip > 0)
             {
                 StarPositions[star.hip] = position;
             }
         }
-
-        particles = particleList.ToArray();
-        ps.SetParticles(particles, particles.Length);
-
-        Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
+            if(!gpuAccel)
+            {
+                RenderStarsCPU();
+                Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
+            }
+ 
     }
-
     public void OnHorizonToggleChanged(bool value)
     {
         showBelowHorizon = value;
         RenderSky();
     }
+    void RenderStarsCPU()
+    {
+        particles = new ParticleSystem.Particle[starDataList.Count];
+
+        for (int i = 0; i < starDataList.Count; i++)
+        {
+            particles[i].position = starDataList[i].position;
+            particles[i].startSize = starDataList[i].size;
+            particles[i].startColor = new Color(1f, 1f, 1f, starDataList[i].alpha);
+            particles[i].remainingLifetime = Mathf.Infinity;
+        }
+        ps.SetParticles(particles, particles.Length);
+    }
+void RenderStarsGPU()
+{
+    int count = starDataList.Count;
+
+    if (count == 0)
+        return;
+
+    // Ensure buffer exists
+    if (starBuffer == null || starBuffer.count != count)
+    {
+        starBuffer?.Release();
+        starBuffer = new ComputeBuffer(count, sizeof(float) * 5);
+    }
+
+    starBuffer.SetData(starDataList);
+
+    // CRITICAL: Set buffer BEFORE draw
+    starGPUMaterial.SetBuffer("_StarBuffer", starBuffer);
+
+    // Setup args buffer
+    if (argsBuffer == null)
+    {
+        argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+    }
+
+    uint[] args = new uint[5]
+    {
+        quadMesh.GetIndexCount(0),
+        (uint)count,
+        quadMesh.GetIndexStart(0),
+        quadMesh.GetBaseVertex(0),
+        0
+    };
+
+    argsBuffer.SetData(args);
+
+    // Draw
+    Graphics.DrawMeshInstancedIndirect(
+        quadMesh,
+        0,
+        starGPUMaterial,
+        new Bounds(Vector3.zero, Vector3.one * 1000f),
+        argsBuffer
+    );
 }
+    Mesh CreateQuad()
+    {
+        Mesh mesh = new Mesh();
+
+        mesh.vertices = new UnityEngine.Vector3[]
+        {
+            new UnityEngine.Vector3(-0.5f, -0.5f, 0),
+            new UnityEngine.Vector3( 0.5f, -0.5f, 0),
+            new UnityEngine.Vector3(-0.5f,  0.5f, 0),
+            new UnityEngine.Vector3( 0.5f,  0.5f, 0),
+        };
+
+        mesh.uv = new UnityEngine.Vector2[]
+        {
+            new UnityEngine.Vector2(0,0),
+            new UnityEngine.Vector2(1,0),
+            new UnityEngine.Vector2(0,1),
+            new UnityEngine.Vector2(1,1),
+        };
+
+        mesh.triangles = new int[]
+        {
+            0, 2, 1,
+           2, 3, 1
+        };
+
+       return mesh;
+    }
+    void OnDestroy()
+    {
+        starBuffer?.Release();
+        argsBuffer?.Release();
+    }
+    void Update()
+    {
+        if (gpuAccel)
+        {
+            RenderStarsGPU();
+        }
+    }
+}
+

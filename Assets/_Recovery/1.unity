@@ -4139,7 +4139,7 @@ MonoBehaviour:
   skyRadius: 100
   showBelowHorizon: 0
   groundObject: {fileID: 1221493960}
-  gpuAccel: 0
+  gpuAccel: 1
   quadMesh: {fileID: 0}
   starGPUMaterial: {fileID: 2100000, guid: 289b87257c8830c4fa93e3336f4eb114, type: 2}
 --- !u!199 &1588375755
