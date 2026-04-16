@@ -1,5 +1,5 @@
-//StarLabel renders text labels for visible stars on the sky map by their "proper" given name from the HYG catalog
-//Converts celestial coordinates (Ra/Dec) into 3D world positions using astronomy calculations based on the observers location and time.
+// StarLabel renders text labels for visible stars on the sky map by their "proper" given name from the HYG catalog
+// Converts celestial coordinates (Ra/Dec) into 3D world positions using astronomy calculations based on the observers location and time.
 
 using System;
 using System.Collections.Generic;
@@ -20,6 +20,7 @@ public class StarLabel : MonoBehaviour
 
     private const double HorizonEpsRad = 1e-6; //small epsilon to prevent floating pt errors at the horizon 
     private List<GameObject> activeLabels = new List<GameObject>(); //keeps track of all currently rendered labels
+    private List<(Vector3 position, float magnitude)> placedLabels = new List<(Vector3, float)>();
 
     void Start()
     {
@@ -56,8 +57,11 @@ public class StarLabel : MonoBehaviour
         //Convert observer latitude from degrees to radians
         double latitudeRad = AstronomyTime.DegToRad(SkySession.Instance.LatitudeDeg);
 
+        var sortedStars = new List<StarRecord>(catalog.VisibleStarsMag6);
+        sortedStars.Sort((a, b) => a.mag.CompareTo(b.mag));
+
         //loop through all the stars with a mag <= 6
-        foreach (var star in catalog.VisibleStarsMag6)
+        foreach (var star in sortedStars)
         {
             //No label get skipped
             if (string.IsNullOrWhiteSpace(star.proper))
@@ -117,12 +121,12 @@ public class StarLabel : MonoBehaviour
                 (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))
             );
             // Create a text label at the computed 3D position
-            CreateLabel(star.proper, starPosition);
+            CreateLabel(star.proper, starPosition, star.mag);
         }
         //Log how many labels were successfully created
         Debug.Log($"Rendered {activeLabels.Count} star labels.");
     }
-        
+
     // Enable/disable all labels (Called by settings menu toggle).
     public void SetLabelsVisible(bool visible)
     {
@@ -136,38 +140,64 @@ public class StarLabel : MonoBehaviour
         OnLabelsVisibilityChanged?.Invoke(visible);
     }
 
-
-    private void CreateLabel(string starName, Vector3 starPosition)
+    private void CreateLabel(string starName, Vector3 starPosition, float magnitude)
     {
         Vector3 dir = starPosition.normalized;
 
         // Base position slightly outside sky dome
         Vector3 basePosition = dir * (skyRadius + 1.5f);
 
-        // Create perpendicular direction for offset
+        // Base offset direction
         Vector3 perpendicular = Vector3.Cross(dir, Vector3.up).normalized;
 
-        // If star is near vertical this prevents zero vector
         if (perpendicular == Vector3.zero)
             perpendicular = Vector3.Cross(dir, Vector3.right).normalized;
 
         float offsetAmount = 2.0f;
 
-        // Final label position
+        // Initial position
         Vector3 labelPosition = basePosition + perpendicular * offsetAmount;
+
+        float minDistance = 3.0f;
+        int stackLevel = 0;
+
+        foreach (var existing in placedLabels)
+        {
+            float distance = Vector3.Distance(labelPosition, existing.position);
+
+            if (distance < minDistance)
+            {
+                // If this star is dimmer, stack it higher
+                if (magnitude > existing.magnitude)
+                {
+                    stackLevel++;
+                }
+            }
+        }
+
+        // Apply vertical stacking
+        float verticalOffset = 1.5f;
+        labelPosition += Vector3.up * (stackLevel * verticalOffset);
 
         GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, labelParent.transform);
 
         TextMesh textMesh = label.GetComponent<TextMesh>();
         textMesh.text = starName;
 
-        label.transform.localScale = Vector3.one * labelScale;
+        float minScale = 0.6f;
+        float maxScale = 1.4f;
+        float normalizeMag = Mathf.InverseLerp(6f, -1f, magnitude);
+        //make bigger text for brighter stars
+        float scale = Mathf.Lerp(minScale, maxScale, normalizeMag);
+        label.transform.localScale = Vector3.one * labelScale * scale;
 
         label.transform.LookAt(Camera.main.transform);
         label.transform.Rotate(0, 180f, 0);
 
         activeLabels.Add(label);
+        placedLabels.Add((labelPosition, magnitude));
     }
+
     private void ClearLabels()
     {
         // Loop through all previously created labels
@@ -179,19 +209,21 @@ public class StarLabel : MonoBehaviour
         }
         // Clear list so we can repopulate it cleanly
         activeLabels.Clear();
+        placedLabels.Clear();
     }
-    
+
     // Called by "Generate Stars under Horizon toggle."
     public void OnHorizonToggleChanged(bool value)
     {
         showBelowHorizon = value;
         ClearLabels();
         RenderLabels();
-        
+
         // If star labels were hidden, make sure they stay hidden when toggling stars under the horizon.
-        labelParent.SetActive(labelVisible); 
-        
+        labelParent.SetActive(labelVisible);
+
     }
+
     public void QuitApplication()
     {
         Application.Quit();
