@@ -1891,8 +1891,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -255, y: 420}
-  m_SizeDelta: {x: 450, y: 50}
+  m_AnchoredPosition: {x: -300, y: 420}
+  m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &798614032
 MonoBehaviour:
@@ -1914,7 +1914,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: "40\xB0 0.00' N  |  74\xB0 0.00' W"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
   m_sharedMaterial: {fileID: 5210192816950331756, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
@@ -2377,8 +2377,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 220, y: 420}
-  m_SizeDelta: {x: 400, y: 50}
+  m_AnchoredPosition: {x: 230, y: 420}
+  m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &902225599
 MonoBehaviour:
@@ -2400,7 +2400,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: New Text
+  m_text: "2025-01-18  \xB7  18:30"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
   m_sharedMaterial: {fileID: 5210192816950331756, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
