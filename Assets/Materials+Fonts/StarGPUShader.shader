@@ -1,10 +1,5 @@
 Shader "Custom/StarGPU"
 {
-    Properties
-    {
-        _MainTex ("Texture", 2D) = "white" {}
-    }
-
     SubShader
     {
         Tags { "Queue"="Transparent" "RenderType"="Transparent" }
@@ -12,7 +7,7 @@ Shader "Custom/StarGPU"
         Pass
         {
             ZWrite Off
-            Blend SrcAlpha One
+            Blend SrcAlpha One   // Additive glow
 
             CGPROGRAM
             #pragma vertex vert
@@ -38,7 +33,8 @@ Shader "Custom/StarGPU"
             struct v2f
             {
                 float4 pos : SV_POSITION;
-                float alpha : TEXCOORD0;
+                float2 uv : TEXCOORD0;
+                float alpha : TEXCOORD1;
             };
 
             v2f vert(appdata v)
@@ -53,12 +49,13 @@ Shader "Custom/StarGPU"
 
                 float3 offset =
                     right * v.vertex.x * star.size +
-                    up * v.vertex.y * star.size;
+                    up    * v.vertex.y * star.size;
 
                 float3 finalPos = worldPos + offset;
 
                 v2f o;
-                o.pos = UnityObjectToClipPos(float4(finalPos, 1.0));
+                o.pos = mul(UNITY_MATRIX_VP, float4(finalPos, 1.0));
+                o.uv = v.uv;
                 o.alpha = star.alpha;
 
                 return o;
@@ -66,8 +63,18 @@ Shader "Custom/StarGPU"
 
             fixed4 frag(v2f i) : SV_Target
             {
-                return fixed4(1,1,1,i.alpha);
+                // Center UV (0,0 at center)
+                float2 uv = i.uv - 0.5;
+
+                // Distance from center
+                float dist = length(uv);
+
+                // Soft circular falloff
+                float glow = smoothstep(0.5, 0.0, dist);
+
+                return fixed4(1, 1, 1, glow * i.alpha);
             }
+
             ENDCG
         }
     }
