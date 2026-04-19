@@ -22,6 +22,21 @@ public class CameraControllerNew : MonoBehaviour
     private CameraControl controls;            // Input action map reference, the binding of controls from input.   
     private bool mouseDrag = false;            // Keep track of user dragging/holding mouse button.
 
+    /// <summary>
+    /// Current compass heading in degrees [0, 360).
+    /// 0 = North, 90 = East, 180 = South, 270 = West.
+    /// Matches the azimuth convention used by SkyMapRenderer.
+    /// </summary>
+    public float HeadingDegrees
+    {
+        get
+        {
+            float h = horizontalRotation % 360f;
+            if (h < 0f) h += 360f;
+            return h;
+        }
+    }
+
     void Awake()                               // Awake is called before the scene is loaded. 
     {
         controls = new CameraControl();             // Setup the input action map.
@@ -75,7 +90,7 @@ public class CameraControllerNew : MonoBehaviour
     {
         // Stores the scroll wheel input value to be used in Update().
         zoomInput = context.ReadValue<float>();
-        Debug.Log(zoomInput);
+        // Debug.Log(zoomInput);
     }
 
     public void EnableControls()
@@ -89,4 +104,3 @@ public class CameraControllerNew : MonoBehaviour
     }
 
 }
-
