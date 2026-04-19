@@ -1044,6 +1044,8 @@ GameObject:
   - component: {fileID: 366868474}
   - component: {fileID: 366868473}
   - component: {fileID: 366868472}
+  - component: {fileID: 366868477}
+  - component: {fileID: 366868476}
   m_Layer: 5
   m_Name: SessionInfoPanel
   m_TagString: Untagged
@@ -1067,10 +1069,10 @@ RectTransform:
   - {fileID: 902225598}
   m_Father: {fileID: 1546320980}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 0}
-  m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0}
+  m_AnchorMin: {x: 0.5, y: 1}
+  m_AnchorMax: {x: 0.5, y: 1}
+  m_AnchoredPosition: {x: 0, y: -95}
+  m_SizeDelta: {x: 900, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &366868472
 MonoBehaviour:
@@ -1152,6 +1154,44 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!114 &366868476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366868470}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.122641504, g: 0.122641504, b: 0.122641504, a: 0.7058824}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Type: 1
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &366868477
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 366868470}
+  m_CullTransparentMesh: 1
 --- !u!1 &381984643
 GameObject:
   m_ObjectHideFlags: 0
@@ -1891,8 +1931,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -300, y: 420}
-  m_SizeDelta: {x: 500, y: 50}
+  m_AnchoredPosition: {x: -230, y: 0}
+  m_SizeDelta: {x: 450, y: 35}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &798614032
 MonoBehaviour:
@@ -1941,8 +1981,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 18
+  m_fontSizeBase: 18
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2165,7 +2205,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 487}
+  m_AnchoredPosition: {x: 0, y: 490}
   m_SizeDelta: {x: 1, y: 24}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &812034483
@@ -2377,8 +2417,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 230, y: 420}
-  m_SizeDelta: {x: 500, y: 50}
+  m_AnchoredPosition: {x: 230, y: 0}
+  m_SizeDelta: {x: 450, y: 35}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &902225599
 MonoBehaviour:
@@ -2427,8 +2467,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 30
-  m_fontSizeBase: 30
+  m_fontSize: 18
+  m_fontSizeBase: 18
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2781,7 +2821,6 @@ GameObject:
   - component: {fileID: 963194226}
   - component: {fileID: 963194229}
   - component: {fileID: 963194230}
-  - component: {fileID: 963194231}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -2904,30 +2943,6 @@ MonoBehaviour:
   rotationSpeed: 0.2
   rotationX: 85
   rotationY: -85
---- !u!114 &963194231
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ace45269248f5d94b8eefbec7859f57a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CompassStrip
-  cameraController: {fileID: 963194230}
-  stripViewport: {fileID: 1459227065}
-  stripContent: {fileID: 1564059188}
-  headingLabel: {fileID: 1883392382}
-  labelFont: {fileID: 11400000, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
-  pixelsPerDegree: 6
-  majorFontSize: 20
-  minorFontSize: 15
-  majorColor: {r: 1, g: 0.5764706, b: 0, a: 1}
-  minorColor: {r: 1, g: 0.5764706, b: 0, a: 0.6}
-  outlineColor: {r: 0, g: 0, b: 0, a: 0.85}
-  outlineWidth: 0.25
 --- !u!1 &971067188
 GameObject:
   m_ObjectHideFlags: 0
@@ -4243,7 +4258,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -21}
+  m_AnchoredPosition: {x: 0, y: -19}
   m_SizeDelta: {x: 1600, y: 60}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &1459227066
@@ -4258,7 +4273,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 31a19414c41e5ae4aae2af33fee712f6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Mask
-  m_ShowMaskGraphic: 0
+  m_ShowMaskGraphic: 1
 --- !u!114 &1459227067
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4272,14 +4287,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.1254902, g: 0.1254902, b: 0.1254902, a: 0.7058824}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 10905, guid: 0000000000000000f000000000000000, type: 0}
+  m_Sprite: {fileID: 10907, guid: 0000000000000000f000000000000000, type: 0}
   m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -4384,6 +4399,7 @@ GameObject:
   - component: {fileID: 1546320979}
   - component: {fileID: 1546320978}
   - component: {fileID: 1546320977}
+  - component: {fileID: 1546320981}
   m_Layer: 5
   m_Name: ' Compass/Info'
   m_TagString: Untagged
@@ -4477,6 +4493,30 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1546320981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1546320976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ace45269248f5d94b8eefbec7859f57a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CompassStrip
+  cameraController: {fileID: 963194230}
+  stripViewport: {fileID: 1459227065}
+  stripContent: {fileID: 1564059188}
+  headingLabel: {fileID: 1883392382}
+  labelFont: {fileID: 11400000, guid: f8f8b5826391b674a83eb52dab1fc391, type: 2}
+  pixelsPerDegree: 6
+  majorFontSize: 20
+  minorFontSize: 15
+  majorColor: {r: 1, g: 0.92, b: 0.7, a: 1}
+  minorColor: {r: 0.8, g: 0.85, b: 1, a: 0.85}
+  outlineColor: {r: 0, g: 0, b: 0, a: 0.85}
+  outlineWidth: 0.25
 --- !u!1 &1564059187
 GameObject:
   m_ObjectHideFlags: 0
@@ -10303,7 +10343,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 446}
+  m_AnchoredPosition: {x: 0, y: 445}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1883392382
