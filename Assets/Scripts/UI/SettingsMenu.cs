@@ -70,14 +70,7 @@ public class SettingsMenu : MonoBehaviour
             horizonLine.SetVisible(value);
     }
 
-
-    // Called by "Constellations" toggle.
-    // Toggles constellation and greys out label toggle when off.
-    public void OnConstellationToggle(bool value)
-    {
-        constellationRenderer.SetConstellationsVisible(value);
-        constellationLabelToggle.interactable = value;
-    }
+    
 
     // Close out the application.
     public void QuitApplication()

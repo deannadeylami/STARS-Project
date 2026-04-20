@@ -5,19 +5,28 @@ using System.Collections.Generic;
 using TMPro;
 using System;
 
+[Serializable]
+public class OverlapDetected
+{
+    public string labelA;
+    public string labelB;
+    public float distance;
+}
+
 public class ConstellationRenderer : MonoBehaviour
 {
     public string fileName = "constellations_with_names.txt";
     public Material lineMaterial;
     public float lineWidth = 0.05f;
-    private GameObject labelParent; // Parent container for label objects so we can toggle them independently.
-    private List<GameObject> labels = new List<GameObject> ();
+    private GameObject labelParent;         // Parent container for label objects so we can toggle them independently.
+    private List<GameObject> labels = new List<GameObject>();
     public float labelOffset = 2f;
 
     public float minScale = 0.3f;
     public float maxScale = 50f;
-    
-   // public Color labelColor = new Color(1f, 0.85f, 0.4f); 
+    private float logCooldown = 0f;
+    private float logInterval = 1f;
+    // public Color labelColor = new Color(1f, 0.85f, 0.4f); 
     public SkyMapRenderer skyMap;
 
     public TMP_FontAsset fontAsset;
@@ -25,10 +34,10 @@ public class ConstellationRenderer : MonoBehaviour
     public event Action<bool> OnConstellationsVisibilityChanged;
 
     void Start()
-    {
+    {   
         labelParent = new GameObject("ConstellationLabels");
         labelParent.transform.parent = transform;
-
+        
         if (skyMap == null)
         {
             Debug.LogError("SkyMapRenderer not assigned!");
@@ -67,38 +76,38 @@ public class ConstellationRenderer : MonoBehaviour
             lr.useWorldSpace = true;
         }
     }
-    void CreateLabel(ConstellationCatalog.Constellation c) 
+    void CreateLabel(ConstellationCatalog.Constellation c)
     {
-        Vector3 sum = Vector3.zero; 
-        int count = 0; 
+        Vector3 sum = Vector3.zero;
+        int count = 0;
         foreach (int hip in c.UniqueHipIds)
-        { 
+        {
             if (skyMap.StarPositions.TryGetValue(hip, out var pos))
-            { 
-                sum += pos; count++; 
-            } 
-        } 
+            {
+                sum += pos; count++;
+            }
+        }
         if (count == 0)
             return;
-        Vector3 center = sum / count; 
-        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset); 
+        Vector3 center = sum / count;
+        Vector3 labelPos = center.normalized * (center.magnitude + labelOffset);
 
         GameObject textObj = new GameObject($"{c.Abbrev}_Label");
         textObj.transform.parent = labelParent.transform;
-        textObj.transform.position = labelPos; 
+        textObj.transform.position = labelPos;
 
         var tmp = textObj.AddComponent<TextMeshPro>();
-        tmp.color = new Color(1f, 0.85f, 0.4f); 
+        tmp.color = new Color(1f, 0.85f, 0.4f);
         tmp.font = fontAsset;
         tmp.enableVertexGradient = false;
         tmp.outlineWidth = 0.25f;
         tmp.outlineColor = new Color(0f, 0f, 0f, 0.8f);
 
         tmp.text = string.IsNullOrEmpty(c.Name) ? c.Abbrev : c.Name;
-        
-        tmp.fontSize = 10; 
-       
-        tmp.alignment = TextAlignmentOptions.Center; 
+
+        tmp.fontSize = 10;
+
+        tmp.alignment = TextAlignmentOptions.Center;
         labels.Add(textObj);
     }
     void Update()
@@ -109,24 +118,45 @@ public class ConstellationRenderer : MonoBehaviour
 
         foreach (var label in labels)
         {
-            if (label == null) 
+            if (label == null)
                 continue;
 
             label.transform.forward = cam.transform.forward;
             float distance = Vector3.Distance(cam.transform.position, label.transform.position);
 
             float scale = Mathf.Pow(distance * 0.02f, 1.1f);
-   
+
             scale = Mathf.Clamp(scale, minScale, maxScale);
 
             label.transform.localScale = Vector3.one * scale;
         }
-    }
-
-    public void SetConstellationsVisible(bool visible)
-    {
-        gameObject.SetActive(visible);
-        OnConstellationsVisibilityChanged?.Invoke(visible);
+        float overlapLimit = 1f;
+        for (int i = 0; i < labels.Count; i++)
+        {
+            if (labels[i] == null)
+                continue;
+            for (int j = i + 1; j < labels.Count; j++)
+            {
+                if (labels[j] == null)
+                    continue;
+                float dist = Vector3.Distance(
+                    labels[i].transform.position,
+                    labels[j].transform.position
+                );
+                if (dist < overlapLimit && Time.time > logCooldown)
+                {
+                    logCooldown = Time.time + logInterval;
+                    Logging.Warning("ConstellationRenderer", "Possible label overlap detected",
+                        new OverlapDetected
+                        {
+                            labelA = labels[i].name,
+                            labelB = labels[j].name,
+                            distance = dist
+                        }
+                    );
+                }
+            }
+        }
     }
 
     public void SetLabelsVisible(bool visible)
@@ -135,4 +165,10 @@ public class ConstellationRenderer : MonoBehaviour
             labelParent.SetActive(visible);
     }
 
+    public void SetConstellationsVisible(bool visible)
+    {
+        gameObject.SetActive(visible);
+        OnConstellationsVisibilityChanged?.Invoke(visible);
+    }
+   
 }
