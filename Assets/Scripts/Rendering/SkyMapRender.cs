@@ -32,6 +32,8 @@ public class SkyMapRenderer : MonoBehaviour
     
     void Start()
     {
+        // Cheeck if user turned on GPU acceleration.
+        gpuAccel = GameSettings.GPUAccel;   
         ps = GetComponent<ParticleSystem>();
 
         // Configure particle system for manual control
