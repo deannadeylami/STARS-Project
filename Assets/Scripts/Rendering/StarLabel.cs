@@ -5,6 +5,13 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+[Serializable]
+public class catalogErrorData
+{
+    public bool catalogNull;
+    public bool visibleStarsNull;
+}
+
 public class StarLabel : MonoBehaviour
 {
     public HYGCatalogParser catalog;
@@ -29,18 +36,20 @@ public class StarLabel : MonoBehaviour
 
     public void RenderLabels()
     {
-        //Bottom two if statements check skysession and catalog making sure its there
-        if (SkySession.Instance == null)
-        {
-            Debug.LogError("SkySession missing.");
-            return;
-        }
-
         if (catalog == null || catalog.VisibleStarsMag6 == null)
         {
-            Debug.LogError("Catalog missing.");
+            Logging.Error(
+            "StarLabel", "Catalog missing or not initialized",
+            new catalogErrorData
+            {
+                catalogNull = (catalog == null),
+                visibleStarsNull = (catalog == null || catalog.VisibleStarsMag6 == null)
+            }
+         );
             return;
+
         }
+       
 
         // Create parent for labels
         labelParent = new GameObject("StarLabels");
@@ -69,7 +78,18 @@ public class StarLabel : MonoBehaviour
 
             //Invalid coordinate data get skipped
             if (float.IsNaN(star.ra) || float.IsNaN(star.dec))
+            {
+                Logging.Warning(
+                    "StarLabel", "Invalid star coordinates detected",
+                    new OverlapDetected
+                    {
+                        labelA = star.proper,
+                        labelB = "INVALID COORDINATES",
+                        distance = 0.5f
+                    }
+                );
                 continue;
+            }
 
             // Convert Right Ascension from hours to degrees
             double raDeg = star.ra * 15.0;
@@ -124,7 +144,15 @@ public class StarLabel : MonoBehaviour
             CreateLabel(star.proper, starPosition, star.mag);
         }
         //Log how many labels were successfully created
-        Debug.Log($"Rendered {activeLabels.Count} star labels.");
+        Logging.Log(
+            "StarLabel", "Star labels rendered",
+            new OverlapDetected
+            {
+                labelA = "TOTAL",
+                labelB = "LABELS",
+                distance = activeLabels.Count
+            }
+        );
     }
 
     // Enable/disable all labels (Called by settings menu toggle).
@@ -160,6 +188,7 @@ public class StarLabel : MonoBehaviour
 
         float minDistance = 3.0f;
         int stackLevel = 0;
+       
 
         foreach (var existing in placedLabels)
         {
@@ -174,14 +203,47 @@ public class StarLabel : MonoBehaviour
                 }
             }
         }
+        if (stackLevel > 3)
+        {
+            Logging.Warning(
+                "StarLabel", "Too much clutter",
+                new OverlapDetected
+                {
+                    labelA = starName,
+                    labelB = "STACKING",
+                    distance = stackLevel
+                }
+            );
+        }
 
         // Apply vertical stacking
         float verticalOffset = 1.5f;
         labelPosition += Vector3.up * (stackLevel * verticalOffset);
 
+        if (starLabelPrefab == null)
+        {
+            Logging.Error(
+                "StarLabel", "Star label prefab is not assigned"
+                );
+            return;
+        }
+
         GameObject label = Instantiate(starLabelPrefab, labelPosition, Quaternion.identity, labelParent.transform);
 
         TextMesh textMesh = label.GetComponent<TextMesh>();
+        if (textMesh == null)
+        {
+            Logging.Error(
+                "StarLabel", "TextMesh missing",
+                new OverlapDetected
+                {
+                    labelA = starName,
+                    labelB = "ERROR ON TEXT MESH",
+                    distance = 0f
+                }
+            );
+            return;
+        }
         textMesh.text = starName;
 
         float minScale = 0.6f;
