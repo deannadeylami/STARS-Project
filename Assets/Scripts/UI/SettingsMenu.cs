@@ -78,6 +78,14 @@ public class SettingsMenu : MonoBehaviour
         Application.Quit();
     }
     
+    // Called by "Constellations" toggle.
+    // Toggles constellation and greys out label toggle when off.
+    public void OnConstellationToggle(bool value)
+    {
+        constellationRenderer.SetConstellationsVisible(value);
+        constellationLabelToggle.interactable = value;
+    }
+    
     // Return to main menu screen.
     public void ReturnToMainMenu()
     {
