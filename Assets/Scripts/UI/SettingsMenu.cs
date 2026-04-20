@@ -10,6 +10,8 @@ public class SettingsMenu : MonoBehaviour
     public CameraControllerNew cameraController;
     public GameObject Ground;
     public Toggle horizonToggle;
+    public ConstellationRenderer constellationRenderer;
+    public Toggle constellationLabelToggle;
     private CameraControl controls;
     public HorizonLine horizonLine;
     private void Awake()
@@ -66,6 +68,15 @@ public class SettingsMenu : MonoBehaviour
         // Keep horizon line in sync: visible when ground is off
         if (horizonLine != null)
             horizonLine.SetVisible(value);
+    }
+
+
+    // Called by "Constellations" toggle.
+    // Toggles constellation and greys out label toggle when off.
+    public void OnConstellationToggle(bool value)
+    {
+        constellationRenderer.SetConstellationsVisible(value);
+        constellationLabelToggle.interactable = value;
     }
 
     // Close out the application.
