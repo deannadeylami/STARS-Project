@@ -15,6 +15,8 @@ public class PlanetRender : MonoBehaviour
      public float labelOffset = 1.5f;
     public float labelScale = 1f;
     public UnityEngine.Color labelColor = UnityEngine.Color.purple;
+    public bool showBelowHorizon = false;
+    private bool labelVisible = true;
     private List<GameObject> activeLabels = new List<GameObject>();
     private GameObject labelParent;
     public PlanetCSVReader planetLoader;
@@ -123,8 +125,8 @@ foreach (Planet planet in planetLoader.planets)
             double altRad = Math.Asin(sinAlt);
 
             // === MATCH SKYMAP: skip below horizon ===
-            //if (altRad <= 0)
-                //continue;
+            if (!showBelowHorizon && altRad <= 0)
+                continue;
             double cosAz =
                 (Math.Sin(decRad) - Math.Sin(altRad) * Math.Sin(latitudeRad)) /
                 (Math.Cos(altRad) * Math.Cos(latitudeRad));
@@ -179,6 +181,8 @@ foreach (Planet planet in planetLoader.planets)
 
     public void SetLabelsVisible(bool visible)
     {
+        labelVisible = visible;
+
         if (labelParent == null)
             RenderPlanets();
 
@@ -216,6 +220,15 @@ private void CreateLabel(string planetName, UnityEngine.Vector3 planetPosition)
         label.transform.Rotate(0, 180f, 0);
 
     activeLabels.Add(label);
+}
+
+public void OnHorizonToggleChanged(bool value)
+{
+    showBelowHorizon = value;
+    RenderPlanets();
+    
+    // If planet labels were hidden, make sure they stay hidden when toggling planets under the horizon.
+    labelParent.SetActive(labelVisible); 
 }
 
 private void ClearLabels()

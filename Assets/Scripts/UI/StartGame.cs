@@ -65,4 +65,13 @@ public class StartGame : MonoBehaviour
     {
         Application.Quit();
     }
+
+    public void OnGPUToggleChanged(bool value)
+    {
+        GameSettings.GPUAccel = value;
+    }
+}
+public static class GameSettings
+{
+    public static bool GPUAccel = false;
 }
