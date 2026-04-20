@@ -16,8 +16,9 @@ public class SkyMapRenderer : MonoBehaviour
     //Toggle for whether stars below the horizon should be rendered
     public bool showBelowHorizon = false; 
     public GameObject groundObject;
-    [SerializeField] public bool gpuAccel = false;
-    struct StarData
+    [SerializeField] public bool gpuAccel;
+
+        struct StarData
     {
         public UnityEngine.Vector3 position;
         public float size;
@@ -33,7 +34,8 @@ public class SkyMapRenderer : MonoBehaviour
     void Start()
     {
         // Cheeck if user turned on GPU acceleration.
-        gpuAccel = GameSettings.GPUAccel;   
+        gpuAccel = GameSettings.GPUAccel;
+        UnityEngine.Debug.Log("GPU Render is set to: " + gpuAccel);   
         ps = GetComponent<ParticleSystem>();
 
         // Configure particle system for manual control
@@ -266,5 +268,6 @@ void RenderStarsGPU()
             RenderStarsGPU();
         }
     }
+
 }
 

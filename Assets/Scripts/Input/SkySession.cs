@@ -67,4 +67,13 @@ public class SkySession : MonoBehaviour
         rawDate = "";
         rawTime = "";
     }
+    public void OnGPUToggleChanged(bool value)
+    {
+        GameSettings.GPUAccel = value;
+        UnityEngine.Debug.Log("GPU Setting Changed");
+    }
+}
+public static class GameSettings
+{
+    public static bool GPUAccel = false;
 }
