@@ -177,7 +177,13 @@ foreach (Planet planet in planetLoader.planets)
         }
 
         UnityEngine.Debug.Log($"Rendered {spawnedPlanets.Count} planets.");
-    }
+
+        // Notify tracker that planets are done
+        if (SkySceneReadyTracker.Instance != null)
+            SkySceneReadyTracker.Instance.ReportReady("Planets");
+        else
+            UnityEngine.Debug.LogWarning("[PlanetRender] SkySceneReadyTracker not found — loading overlay won't dismiss.");
+            }
 
     public void SetLabelsVisible(bool visible)
     {
