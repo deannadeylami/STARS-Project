@@ -163,8 +163,15 @@ public class SkyMapRenderer : MonoBehaviour
                 RenderStarsCPU();
                 Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
             }
+
+            // Notify tracker that stars are done (covers both CPU and GPU paths)
+            if (SkySceneReadyTracker.Instance != null)
+                SkySceneReadyTracker.Instance.ReportReady("Stars");
+            else
+                Debug.LogWarning("[SkyMapRenderer] SkySceneReadyTracker not found — loading overlay won't dismiss.");
  
     }
+
     public void OnHorizonToggleChanged(bool value)
     {
         showBelowHorizon = value;

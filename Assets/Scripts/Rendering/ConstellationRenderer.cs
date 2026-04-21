@@ -51,7 +51,7 @@ public class ConstellationRenderer : MonoBehaviour
 
         catalog = ConstellationCatalog.LoadFromStreamingAssets(fileName);
 
-        RenderAll();
+        RenderAll(reportReady: true);
     }
 
     void DrawConstellation(ConstellationCatalog.Constellation c)
@@ -191,7 +191,7 @@ public class ConstellationRenderer : MonoBehaviour
         labels.Clear();
     }
 
-    void RenderAll()
+    void RenderAll(bool reportReady = false)
     {
         ClearAll();
         foreach (var constellation in catalog.All)
@@ -200,6 +200,13 @@ public class ConstellationRenderer : MonoBehaviour
             CreateLabel(constellation);
         }
         labelParent.SetActive(labelsVisible);
+        if (reportReady)
+        {
+            if (SkySceneReadyTracker.Instance != null)
+                SkySceneReadyTracker.Instance.ReportReady("Constellations");
+            else
+                Debug.LogWarning("[ConstellationRenderer] SkySceneReadyTracker not found — loading overlay won't dismiss.");
+        }
     }
 
     public void OnHorizonToggleChanged(bool value)
