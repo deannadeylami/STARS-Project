@@ -9149,7 +9149,7 @@ MonoBehaviour:
   minScale: 0.3
   maxScale: 50
   skyMap: {fileID: 1588375754}
-  fontAsset: {fileID: 0}
+  fontAsset: {fileID: 11400000, guid: 2fe798750f61cb346bde810d24d291db, type: 2}
 --- !u!4 &1849985794
 Transform:
   m_ObjectHideFlags: 0
