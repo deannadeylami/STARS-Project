@@ -25,6 +25,10 @@ public class ConstellationRenderer : MonoBehaviour
     private List<GameObject> lineObjects = new List<GameObject>();
     public float labelOffset = 2f;
 
+    // How far below the visual horizon (in world-space Y) to clip constellation lines.
+    // A small positive value hides the endpoint before the ground plane is visible to the camera.
+    [SerializeField] private float clipBias = 1.5f;
+
     public float minScale = 0.3f;
     public float maxScale = 50f;
     private float logCooldown = 0f;
@@ -58,8 +62,31 @@ public class ConstellationRenderer : MonoBehaviour
     {
         foreach (var seg in c.Segments)
         {
-            if (!skyMap.StarPositions.TryGetValue(seg.hip1, out var pos1)) continue;
-            if (!skyMap.StarPositions.TryGetValue(seg.hip2, out var pos2)) continue;
+            // Both endpoints must exist in the full sky map (above or below horizon).
+            if (!skyMap.AllStarPositions.TryGetValue(seg.hip1, out var pos1)) continue;
+            if (!skyMap.AllStarPositions.TryGetValue(seg.hip2, out var pos2)) continue;
+
+            bool p1Above = pos1.y > clipBias;
+            bool p2Above = pos2.y > clipBias;
+
+            // If below-horizon rendering is off, handle clipping.
+            if (!showBelowHorizon)
+            {
+                // Both below horizon — skip entirely.
+                if (!p1Above && !p2Above) continue;
+
+                // One endpoint is below — interpolate to the clip plane (y == clipBias).
+                if (!p1Above)
+                {
+                    float t = (pos2.y - clipBias) / (pos2.y - pos1.y);
+                    pos1 = Vector3.Lerp(pos2, pos1, t);
+                }
+                else if (!p2Above)
+                {
+                    float t = (pos1.y - clipBias) / (pos1.y - pos2.y);
+                    pos2 = Vector3.Lerp(pos1, pos2, t);
+                }
+            }
 
             GameObject lineObj = new GameObject($"{c.Abbrev}_line");
             lineObj.transform.parent = this.transform;
@@ -75,10 +102,17 @@ public class ConstellationRenderer : MonoBehaviour
 
             lr.material = lineMaterial;
             lr.useWorldSpace = true;
+
+            // Register so ClearAll() can destroy it on re-render.
+            lineObjects.Add(lineObj);
         }
     }
+
     void CreateLabel(ConstellationCatalog.Constellation c)
     {
+        // Centroid is computed only from stars currently visible (above horizon).
+        // This means the label naturally moves as stars rise/set, and is suppressed
+        // entirely when no stars from the constellation are above the horizon.
         Vector3 sum = Vector3.zero;
         int count = 0;
         foreach (int hip in c.UniqueHipIds)
@@ -111,6 +145,7 @@ public class ConstellationRenderer : MonoBehaviour
         tmp.alignment = TextAlignmentOptions.Center;
         labels.Add(textObj);
     }
+
     void Update()
     {
         if (Camera.main == null)

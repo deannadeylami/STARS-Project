@@ -14741,6 +14741,7 @@ MonoBehaviour:
   lineWidth: 0.05
   showBelowHorizon: 0
   labelOffset: 2
+  clipBias: -2
   minScale: 0.3
   maxScale: 50
   skyMap: {fileID: 1588375754}
