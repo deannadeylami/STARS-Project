@@ -3,9 +3,14 @@ using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class InputFieldGrabber : MonoBehaviour
 {
+    [Header("Preset Dropdowns")]
+    public TMP_Dropdown eventDropdown;
+    public TMP_Dropdown locationDropdown;
+
     [Header("UI Inputs")]
     public TMP_InputField dateInput;
     public TMP_InputField timeInput;
@@ -37,6 +42,7 @@ public class InputFieldGrabber : MonoBehaviour
         EnsureErrorReference();
         AutoWireIfMissing();
         ClearError();
+        SetupPresetDropdowns();
     }
 
 
@@ -106,6 +112,125 @@ public class InputFieldGrabber : MonoBehaviour
         if (dd == null)
             Debug.LogWarning($"[AutoWire] Found '{rootName}' but no TMP_Dropdown on it or children.");
         return dd;
+    }
+
+    // Holds values for preset events
+    [System.Serializable]
+    public class EventPreset
+    {
+        public string label;
+        public int latDeg, lonDeg;
+        public double latMin, lonMin;
+        public string latDir, lonDir;
+        public int year, month, day, hour, minute;
+    }
+
+    // Holds values for preset locations
+    [System.Serializable]
+    public class LocationPreset
+    {
+        public string label;
+        public int latDeg, lonDeg;
+        public double latMin, lonMin;
+        public string latDir, lonDir;
+    }
+    
+    // Preset Events
+    private List<EventPreset> events = new List<EventPreset>
+    {
+        new EventPreset { label="Planetary Parade",                 latDeg=40, latMin=42.7, latDir="N", lonDeg=74,  lonMin=0.4,  lonDir="W", year=2026, month=2, day=28, hour=19, minute=0  },
+        new EventPreset { label="Apollo 11 Launch",                 latDeg=28, latMin=31.0, latDir="N", lonDeg=80,  lonMin=39.0, lonDir="W", year=1969, month=7, day=16, hour=21, minute=0  },
+        new EventPreset { label="Artemis II Launch",                latDeg=28, latMin=37.6, latDir="N", lonDeg=80,  lonMin=37.3, lonDir="W", year=2026, month=4, day=1, hour=22, minute=35  },
+        new EventPreset { label="Venus and Jupiter Conjunction",    latDeg=51, latMin=30.0, latDir="N", lonDeg=0,   lonMin=7.5,  lonDir="W", year=2026, month=6, day=8, hour=15, minute=0  },
+        new EventPreset { label="Total Solar Eclipse 2024",         latDeg=37, latMin=5.0,  latDir="N", lonDeg=88,  lonMin=38.0, lonDir="W", year=2024, month=4, day=8,  hour=14, minute=0  },
+    };
+
+    // Preset Cities
+    private List<LocationPreset> locations = new List<LocationPreset>
+    {
+        new LocationPreset { label="NYC Statue of Liberty",     latDeg=40, latMin=41.3, latDir="N", lonDeg=74,  lonMin=2.7,  lonDir="W" },
+        new LocationPreset { label="Big Ben Clocktower",    latDeg=51, latMin=30.0, latDir="N", lonDeg=0,   lonMin=7.5, lonDir="W" },
+        new LocationPreset { label="Colosseum",     latDeg=23, latMin=24.5,  latDir="N", lonDeg=25,   lonMin=39.8,  lonDir="E" },
+        new LocationPreset { label="Eiffel Tower",     latDeg=48, latMin=51,  latDir="N", lonDeg=2,   lonMin=17.7,  lonDir="E" },
+        new LocationPreset { label="Golden Gate Bridge",     latDeg=37, latMin=49.2,  latDir="N", lonDeg=122,   lonMin=28.7,  lonDir="W" },
+        new LocationPreset { label="Mount Everest",     latDeg=27, latMin=59.3,  latDir="N", lonDeg=86,   lonMin=55.5,  lonDir="E" },
+    };
+
+    
+    private void SetupPresetDropdowns()
+    {
+        if (eventDropdown != null)
+        {
+            var options = new List<string> { "events" };                // first entry is the placeholder shown before user picks anything
+            foreach (var e in events)                                   
+            {
+                options.Add(e.label);                                   // add each preset label to the list
+            }
+            eventDropdown.AddOptions(options);                          // push the labels to UI
+            eventDropdown.onValueChanged.AddListener(OnEventSelected);  // call OnEventSelected when user picks something
+        }
+
+        if (locationDropdown != null)
+        {
+            var options = new List<string> { "locations" };             // again, for locations
+            foreach (var l in locations)
+            {
+                options.Add(l.label);
+            }          
+            locationDropdown.AddOptions(options);                            
+            locationDropdown.onValueChanged.AddListener(OnLocationSelected); 
+        }
+    }
+
+    // apply events info to text boxes
+    private void OnEventSelected(int index)
+    {
+        if (index == 0) return; 
+
+        var p = events[index - 1]; // index - 1 because index 0 is the placeholder, so preset 0 is at index 1.
+
+        // copy preset values straight into existing input fields
+        latDegInput.text = p.latDeg.ToString();
+        latMinInput.text = p.latMin.ToString(); 
+        SetDropdown(latHemisphereDropdown, p.latDir);                       // set N/S dropdown
+        lonDegInput.text = p.lonDeg.ToString();
+        lonMinInput.text = p.lonMin.ToString();
+        SetDropdown(lonHemisphereDropdown, p.lonDir);                       // set E/W dropdown
+        dateInput.text = new DateTime(p.year, p.month, p.day).ToString(DateFormat);             
+        timeInput.text = new DateTime(1, 1, 1, p.hour, p.minute, 0).ToString(TimeFormat);        
+
+        if (locationDropdown != null) locationDropdown.SetValueWithoutNotify(0); // reset location dropdown back to placeholder to avoid conflict w/ event
+    }
+
+    // apply location info to text boxes
+    private void OnLocationSelected(int index)
+    {
+        if (index == 0) return; // placeholder, do nothing
+
+        var p = locations[index - 1]; // same index - 1 offset as above.
+
+        // fill coords
+        latDegInput.text = p.latDeg.ToString();
+        latMinInput.text = p.latMin.ToString();
+        SetDropdown(latHemisphereDropdown, p.latDir);
+        lonDegInput.text = p.lonDeg.ToString();
+        lonMinInput.text = p.lonMin.ToString();
+        SetDropdown(lonHemisphereDropdown, p.lonDir);
+    }
+
+    // apply N/S and E/W dropdowns
+    private void SetDropdown(TMP_Dropdown dropdown, string value)
+    {
+        if (dropdown == null) return;
+
+        for (int i = 0; i < dropdown.options.Count; i++)
+        {
+            if (dropdown.options[i].text == value)
+            {
+                dropdown.value = i;
+                return;
+            }
+        }
     }
 
     public void GrabAllInputs()
