@@ -18,7 +18,7 @@ public class SkyMapRenderer : MonoBehaviour
     public GameObject groundObject;
     [SerializeField] public bool gpuAccel;
 
-        struct StarData
+    struct StarData
     {
         public UnityEngine.Vector3 position;
         public float size;
@@ -33,7 +33,7 @@ public class SkyMapRenderer : MonoBehaviour
     
     void Start()
     {
-        // Cheeck if user turned on GPU acceleration.
+        // Check if user turned on GPU acceleration.
         gpuAccel = GameSettings.GPUAccel;
         UnityEngine.Debug.Log("GPU Render is set to: " + gpuAccel);   
         ps = GetComponent<ParticleSystem>();
@@ -54,11 +54,18 @@ public class SkyMapRenderer : MonoBehaviour
         RenderSky();
     }
 
+    // Filtered by horizon — used for drawing constellation line segments.
     public Dictionary<int, UnityEngine.Vector3> StarPositions = new Dictionary<int, UnityEngine.Vector3>();
+
+    // Always populated regardless of horizon toggle — used for constellation label centroid and line clipping.
+    public Dictionary<int, UnityEngine.Vector3> AllStarPositions = new Dictionary<int, UnityEngine.Vector3>();
 
     public void RenderSky()
     {
         starDataList.Clear();
+        StarPositions.Clear();
+        AllStarPositions.Clear();
+
         if (SkySession.Instance == null)
         {
             Debug.LogError("SkySession missing from scene.");
@@ -99,11 +106,6 @@ public class SkyMapRenderer : MonoBehaviour
 
             double altRad = Math.Asin(sinAlt);
 
-            // Toggle is off, skip stars at below the horizon.
-            // Toggle is on, allow them to render.
-            if (!showBelowHorizon && altRad <= HorizonEpsRad) 
-                continue;
-
             // This gives azimuth measured from SOUTH; convert to from NORTH by adding pi.
             double sinHA = Math.Sin(haRad);
             double cosHA = Math.Cos(haRad);
@@ -125,9 +127,18 @@ public class SkyMapRenderer : MonoBehaviour
             // Convert spherical (alt, az) to 3D position on dome
             UnityEngine.Vector3 position = new UnityEngine.Vector3(
                 (float)(skyRadius * Math.Cos(altRad) * Math.Sin(azRad)), // X
-                (float)(skyRadius * Math.Sin(altRad)),                  // Y
+                (float)(skyRadius * Math.Sin(altRad)),                   // Y
                 (float)(skyRadius * Math.Cos(altRad) * Math.Cos(azRad))  // Z
             );
+
+            // Always record full-sky position for constellation label centroid and line clipping (horizon-agnostic).
+            if (star.hip > 0)
+                AllStarPositions[star.hip] = position;
+
+            // Toggle is off, skip stars below the horizon.
+            // Toggle is on, allow them to render.
+            if (!showBelowHorizon && altRad <= HorizonEpsRad)
+                continue;
 
             float t = Mathf.InverseLerp(0f, catalog.magnitudeLimit, star.mag);
             float curved = Mathf.Pow(t, 1.7f);
@@ -158,18 +169,18 @@ public class SkyMapRenderer : MonoBehaviour
                 StarPositions[star.hip] = position;
             }
         }
-            if(!gpuAccel)
-            {
-                RenderStarsCPU();
-                Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
-            }
 
-            // Notify tracker that stars are done (covers both CPU and GPU paths)
-            if (SkySceneReadyTracker.Instance != null)
-                SkySceneReadyTracker.Instance.ReportReady("Stars");
-            else
-                Debug.LogWarning("[SkyMapRenderer] SkySceneReadyTracker not found — loading overlay won't dismiss.");
- 
+        if(!gpuAccel)
+        {
+            RenderStarsCPU();
+            Debug.Log($"Rendered {particles.Length} stars using ParticleSystem.");
+        }
+
+        // Notify tracker that stars are done (covers both CPU and GPU paths)
+        if (SkySceneReadyTracker.Instance != null)
+            SkySceneReadyTracker.Instance.ReportReady("Stars");
+        else
+            Debug.LogWarning("[SkyMapRenderer] SkySceneReadyTracker not found — loading overlay won't dismiss.");
     }
 
     public void OnHorizonToggleChanged(bool value)
@@ -177,6 +188,7 @@ public class SkyMapRenderer : MonoBehaviour
         showBelowHorizon = value;
         RenderSky();
     }
+
     void RenderStarsCPU()
     {
         particles = new ParticleSystem.Particle[starDataList.Count];
@@ -190,51 +202,53 @@ public class SkyMapRenderer : MonoBehaviour
         }
         ps.SetParticles(particles, particles.Length);
     }
-void RenderStarsGPU()
-{
-    int count = starDataList.Count;
 
-    if (count == 0)
-        return;
-
-    // Ensure buffer exists
-    if (starBuffer == null || starBuffer.count != count)
+    void RenderStarsGPU()
     {
-        starBuffer?.Release();
-        starBuffer = new ComputeBuffer(count, sizeof(float) * 5);
+        int count = starDataList.Count;
+
+        if (count == 0)
+            return;
+
+        // Ensure buffer exists
+        if (starBuffer == null || starBuffer.count != count)
+        {
+            starBuffer?.Release();
+            starBuffer = new ComputeBuffer(count, sizeof(float) * 5);
+        }
+
+        starBuffer.SetData(starDataList);
+
+        // CRITICAL: Set buffer BEFORE draw
+        starGPUMaterial.SetBuffer("_StarBuffer", starBuffer);
+
+        // Setup args buffer
+        if (argsBuffer == null)
+        {
+            argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
+        }
+
+        uint[] args = new uint[5]
+        {
+            quadMesh.GetIndexCount(0),
+            (uint)count,
+            quadMesh.GetIndexStart(0),
+            quadMesh.GetBaseVertex(0),
+            0
+        };
+
+        argsBuffer.SetData(args);
+
+        // Draw
+        Graphics.DrawMeshInstancedIndirect(
+            quadMesh,
+            0,
+            starGPUMaterial,
+            new Bounds(Vector3.zero, Vector3.one * 1000f),
+            argsBuffer
+        );
     }
 
-    starBuffer.SetData(starDataList);
-
-    // CRITICAL: Set buffer BEFORE draw
-    starGPUMaterial.SetBuffer("_StarBuffer", starBuffer);
-
-    // Setup args buffer
-    if (argsBuffer == null)
-    {
-        argsBuffer = new ComputeBuffer(1, 5 * sizeof(uint), ComputeBufferType.IndirectArguments);
-    }
-
-    uint[] args = new uint[5]
-    {
-        quadMesh.GetIndexCount(0),
-        (uint)count,
-        quadMesh.GetIndexStart(0),
-        quadMesh.GetBaseVertex(0),
-        0
-    };
-
-    argsBuffer.SetData(args);
-
-    // Draw
-    Graphics.DrawMeshInstancedIndirect(
-        quadMesh,
-        0,
-        starGPUMaterial,
-        new Bounds(Vector3.zero, Vector3.one * 1000f),
-        argsBuffer
-    );
-}
     Mesh CreateQuad()
     {
         Mesh mesh = new Mesh();
@@ -258,16 +272,18 @@ void RenderStarsGPU()
         mesh.triangles = new int[]
         {
             0, 2, 1,
-           2, 3, 1
+            2, 3, 1
         };
 
-       return mesh;
+        return mesh;
     }
+
     void OnDestroy()
     {
         starBuffer?.Release();
         argsBuffer?.Release();
     }
+
     void Update()
     {
         if (gpuAccel)
@@ -277,4 +293,3 @@ void RenderStarsGPU()
     }
 
 }
-
