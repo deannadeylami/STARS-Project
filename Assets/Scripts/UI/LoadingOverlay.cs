@@ -7,44 +7,7 @@ using TMPro;
 /// <summary>
 /// Full-screen dark overlay with a circular progress bar and loading label.
 /// Fades out once SkySceneReadyTracker reports all renderers are done.
-///
-/// Setup in Unity Editor:
-///  1. Create a new Canvas in SkyScene:
-///       Render Mode: Screen Space - Overlay
-///       Sort Order: 999
-///
-///  2. Add a full-screen Image child named "Background":
-///       Color: R:10 G:15 B:40 A:255  (dark navy)
-///       Anchor: stretch/stretch, all offsets 0
-///
-///  3. Create an empty child GameObject named "ProgressGroup", centered on canvas.
-///
-///  4. Inside ProgressGroup, add an Image named "RingTrack":
-///       Source Image: a circle sprite (use Unity's default UISprite or any circle)
-///       Color: R:255 G:255 B:255 A:25  (faint white ring — the track)
-///       Image Type: Filled, Fill Method: Radial 360, Fill Origin: Top
-///       Fill Amount: 1
-///       Width/Height: 120 x 120
-///
-///  5. Inside ProgressGroup, add another Image named "RingFill":
-///       Same circle sprite as RingTrack
-///       Color: R:100 G:180 B:255 A:255  (light blue)
-///       Image Type: Filled, Fill Method: Radial 360, Fill Origin: Top
-///       Clockwise: true
-///       Fill Amount: 0  (starts empty)
-///       Width/Height: 120 x 120
-///       Position: same as RingTrack (0,0)
-///
-///  6. Inside ProgressGroup, add a TextMeshPro - Text named "LoadingLabel":
-///       Text: "Loading Stars..."
-///       Font Size: 18
-///       Alignment: Center
-///       Color: R:180 G:210 B:255 A:255
-///       Position: 0, -80  (below the ring)
-///
-///  7. Attach this script to the Canvas GameObject.
-///  8. Wire up all four references in the Inspector.
-/// </summary>
+/// 
 [RequireComponent(typeof(Canvas))]
 public class LoadingOverlay : MonoBehaviour
 {

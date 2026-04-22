@@ -17,6 +17,8 @@ public class SkyMapRenderer : MonoBehaviour
     public bool showBelowHorizon = false; 
     public GameObject groundObject;
     [SerializeField] public bool gpuAccel;
+    // Hardcoded star texture loaded at runtime from Assets/Resources/
+    [SerializeField] private string starTexturePath = "star_texture";
 
     struct StarData
     {
@@ -37,6 +39,26 @@ public class SkyMapRenderer : MonoBehaviour
         gpuAccel = GameSettings.GPUAccel;
         UnityEngine.Debug.Log("GPU Render is set to: " + gpuAccel);   
         ps = GetComponent<ParticleSystem>();
+
+        // --- Force star texture from Resources regardless of Inspector assignment ---
+        Texture2D starTex = Resources.Load<Texture2D>(starTexturePath);
+        if (starTex != null)
+        {
+            // CPU path — particle system renderer
+            var psr = GetComponent<ParticleSystemRenderer>();
+            if (psr != null && psr.material != null)
+                psr.material.mainTexture = starTex;
+
+            // GPU path — instanced draw material
+            if (starGPUMaterial != null)
+                starGPUMaterial.mainTexture = starTex;
+
+            Debug.Log("[SkyMapRenderer] Star texture loaded from Resources: " + starTexturePath);
+        }
+        else
+        {
+            Debug.LogWarning("[SkyMapRenderer] Could not find star texture at Resources/" + starTexturePath);
+        }
 
         // Configure particle system for manual control
         var main = ps.main;
