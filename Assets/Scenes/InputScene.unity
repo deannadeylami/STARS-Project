@@ -3143,7 +3143,6 @@ GameObject:
   - component: {fileID: 403336999}
   - component: {fileID: 403336998}
   - component: {fileID: 403336997}
-  - component: {fileID: 403337001}
   m_Layer: 5
   m_Name: SubmitButton
   m_TagString: Untagged
@@ -3229,7 +3228,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 403337001}
+      - m_Target: {fileID: 1757075397}
         m_TargetAssemblyTypeName: InputFieldGrabber, Assembly-CSharp
         m_MethodName: GrabAllInputs
         m_Mode: 1
@@ -3279,33 +3278,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 403336995}
   m_CullTransparentMesh: 1
---- !u!114 &403337001
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 403336995}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d03b88f5ede011b45b660591d5dbe29f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InputFieldGrabber
-  eventDropdown: {fileID: 0}
-  locationDropdown: {fileID: 0}
-  userPresetDropdown: {fileID: 0}
-  presetNameInput: {fileID: 0}
-  dateInput: {fileID: 340610818}
-  timeInput: {fileID: 765865735}
-  latDegInput: {fileID: 0}
-  latMinInput: {fileID: 0}
-  latHemisphereDropdown: {fileID: 0}
-  lonDegInput: {fileID: 0}
-  lonMinInput: {fileID: 0}
-  lonHemisphereDropdown: {fileID: 0}
-  errorText: {fileID: 0}
-  skySceneName: SkyScene
-  clearUserPresetsOnAwake: 0
 --- !u!1 &423676302
 GameObject:
   m_ObjectHideFlags: 0
@@ -6521,7 +6493,6 @@ GameObject:
   - component: {fileID: 1037765660}
   - component: {fileID: 1037765659}
   - component: {fileID: 1037765658}
-  - component: {fileID: 1037765657}
   m_Layer: 5
   m_Name: SavePresetButton
   m_TagString: Untagged
@@ -6549,33 +6520,6 @@ RectTransform:
   m_AnchoredPosition: {x: 138, y: -340}
   m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1037765657
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1037765655}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d03b88f5ede011b45b660591d5dbe29f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InputFieldGrabber
-  eventDropdown: {fileID: 0}
-  locationDropdown: {fileID: 0}
-  userPresetDropdown: {fileID: 0}
-  presetNameInput: {fileID: 0}
-  dateInput: {fileID: 340610818}
-  timeInput: {fileID: 765865735}
-  latDegInput: {fileID: 0}
-  latMinInput: {fileID: 0}
-  latHemisphereDropdown: {fileID: 0}
-  lonDegInput: {fileID: 0}
-  lonMinInput: {fileID: 0}
-  lonHemisphereDropdown: {fileID: 0}
-  errorText: {fileID: 0}
-  skySceneName: SkyScene
-  clearUserPresetsOnAwake: 0
 --- !u!114 &1037765658
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6634,7 +6578,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1037765657}
+      - m_Target: {fileID: 1757075397}
         m_TargetAssemblyTypeName: InputFieldGrabber, Assembly-CSharp
         m_MethodName: SaveCurrentPreset
         m_Mode: 1
@@ -9188,7 +9132,6 @@ GameObject:
   - component: {fileID: 1659365938}
   - component: {fileID: 1659365937}
   - component: {fileID: 1659365936}
-  - component: {fileID: 1659365935}
   m_Layer: 5
   m_Name: DeletePresetButton
   m_TagString: Untagged
@@ -9216,33 +9159,6 @@ RectTransform:
   m_AnchoredPosition: {x: 324, y: -340}
   m_SizeDelta: {x: 150, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1659365935
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1659365933}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d03b88f5ede011b45b660591d5dbe29f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::InputFieldGrabber
-  eventDropdown: {fileID: 0}
-  locationDropdown: {fileID: 0}
-  userPresetDropdown: {fileID: 0}
-  presetNameInput: {fileID: 0}
-  dateInput: {fileID: 340610818}
-  timeInput: {fileID: 765865735}
-  latDegInput: {fileID: 0}
-  latMinInput: {fileID: 0}
-  latHemisphereDropdown: {fileID: 0}
-  lonDegInput: {fileID: 0}
-  lonMinInput: {fileID: 0}
-  lonHemisphereDropdown: {fileID: 0}
-  errorText: {fileID: 0}
-  skySceneName: SkyScene
-  clearUserPresetsOnAwake: 0
 --- !u!114 &1659365936
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9301,7 +9217,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1659365935}
+      - m_Target: {fileID: 1757075397}
         m_TargetAssemblyTypeName: InputFieldGrabber, Assembly-CSharp
         m_MethodName: DeleteSelectedUserPreset
         m_Mode: 1
@@ -11675,6 +11591,7 @@ MonoBehaviour:
   - {fileID: 15060652}
   - {fileID: 340610818}
   - {fileID: 765865735}
+  - {fileID: 2074409038}
 --- !u!1 &2072576368
 GameObject:
   m_ObjectHideFlags: 0
