@@ -1,9 +1,7 @@
-// StarLabel renders text labels for visible stars on the sky map by their "proper" given name from the HYG catalog
-// Converts celestial coordinates (Ra/Dec) into 3D world positions using astronomy calculations based on the observers location and time.
-
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+
 
 [Serializable]
 public class catalogErrorData
@@ -49,7 +47,6 @@ public class StarLabel : MonoBehaviour
             return;
 
         }
-       
 
         // Create parent for labels
         labelParent = new GameObject("StarLabels");
@@ -175,50 +172,89 @@ public class StarLabel : MonoBehaviour
         // Base position slightly outside sky dome
         Vector3 basePosition = dir * (skyRadius + 1.5f);
 
-        // Base offset direction
-        Vector3 perpendicular = Vector3.Cross(dir, Vector3.up).normalized;
+        //spacing parameters
+        float baseOffset = 2.5f;
+        float minDistance = 4.5f;
 
-        if (perpendicular == Vector3.zero)
-            perpendicular = Vector3.Cross(dir, Vector3.right).normalized;
+        Vector3 labelPosition = basePosition;
 
-        float offsetAmount = 2.0f;
+        int attempts = 0;
+        int maxAttempts = 8;
 
-        // Initial position
-        Vector3 labelPosition = basePosition + perpendicular * offsetAmount;
-
-        float minDistance = 3.0f;
-        int stackLevel = 0;
-       
-
-        foreach (var existing in placedLabels)
+        //radial search
+        while (attempts < maxAttempts)
         {
-            float distance = Vector3.Distance(labelPosition, existing.position);
+            //divide the "circle" into 8 possible angles
+            float angle = (360f / maxAttempts) * attempts;
 
-            if (distance < minDistance)
+            //rotate around the star direction vector, creating a possible ring of label positions
+            Quaternion rotation = Quaternion.AngleAxis(angle, dir);
+
+            Vector3 offsetDir = rotation * Vector3.Cross(dir, Vector3.up).normalized;
+
+            //edge case fix 
+            if (offsetDir == Vector3.zero)
+                offsetDir = rotation * Vector3.Cross(dir, Vector3.right).normalized;
+
+            //possible position
+            Vector3 possiblePosition = basePosition + offsetDir * baseOffset;
+
+            bool overlap = false;
+
+            //checking for overlap
+            foreach (var existing in placedLabels)
             {
-                // If this star is dimmer, stack it higher
-                if (magnitude > existing.magnitude)
+                float distance = Vector3.Distance(possiblePosition, existing.position);
+                //rejects if starlabel is too close **possible collision**
+                if (distance < minDistance)
                 {
-                    stackLevel++;
+                    overlap = true;
+                    break;
                 }
             }
-        }
-        if (stackLevel > 3)
-        {
-            Logging.Warning(
-                "StarLabel", "Too much clutter",
-                new OverlapDetected
-                {
-                    labelA = starName,
-                    labelB = "STACKING",
-                    distance = stackLevel
-                }
-            );
+            //no overlap perf stay there
+            if (!overlap)
+            {
+                labelPosition = possiblePosition;
+                break;
+            }
+
+            attempts++;
         }
 
-        // Apply vertical stacking
-        float verticalOffset = 1.5f;
-        labelPosition += Vector3.up * (stackLevel * verticalOffset);
+        //applying a fallback option to reposition the label slightly upward if all else fails
+        if (attempts == maxAttempts)
+        {
+            labelPosition += Vector3.up * 2.0f;
+        }
+
+        //strength of how much the labels push away from each other
+        float pushStrength = 2.0f;
+        int iterations = 5;
+
+        //iterative repulsion to reduce overlap with labels that are nearby
+        for (int i = 0; i < iterations; i++)
+        {
+            Vector3 push = Vector3.zero;
+
+            foreach (var existing in placedLabels)
+            {
+                //Direction and distance from an existing label 
+                Vector3 diff = labelPosition - existing.position;
+                float dist = diff.magnitude;
+
+                //only applied if labels are too close 
+                if (dist < minDistance && dist > 0.001f)
+                {
+                    //computation of push based on the closeness of the labels
+                    float force = (minDistance - dist) / minDistance;
+                    //push the label away from the existing label 
+                    push += diff.normalized * force;
+                }
+            }
+            //move label based on push force
+            labelPosition += push * pushStrength;
+        }
 
         if (starLabelPrefab == null)
         {
