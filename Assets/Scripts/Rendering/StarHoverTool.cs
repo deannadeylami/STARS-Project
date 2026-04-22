@@ -160,7 +160,7 @@ void Update()
         PositionPanel(tooltipPanel.GetComponent<RectTransform>(), mousePos);
     }
 
-    void ClosePanel()
+    public void ClosePanel()
     {
         tooltipPanel.SetActive(false);
         openPanelIndex = -1;

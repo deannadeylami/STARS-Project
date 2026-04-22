@@ -1114,6 +1114,7 @@ MonoBehaviour:
   constellationRenderer: {fileID: 1849985793}
   constellationLabelToggle: {fileID: 1807545528}
   horizonLine: {fileID: 1039915449}
+  starTool: {fileID: 702303999}
 --- !u!1001 &447624697
 PrefabInstance:
   m_ObjectHideFlags: 0
