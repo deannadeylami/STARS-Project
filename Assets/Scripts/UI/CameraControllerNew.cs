@@ -14,7 +14,7 @@ public class CameraControllerNew : MonoBehaviour
     
     private float zoomSpeed = 10f;                   // Speed of zooming in and out
     private float minZoom = 10f;                      // Minimum zoom distance
-    private float maxZoom = 90f;                     // Maximum zoom distance
+    private float maxZoom = 60f;                     // Maximum zoom distance
 
     private float zoomInput;                         // Input from scroll wheel
     private Camera cam;
