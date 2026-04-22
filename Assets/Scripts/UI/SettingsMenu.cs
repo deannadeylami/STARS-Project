@@ -14,6 +14,8 @@ public class SettingsMenu : MonoBehaviour
     public Toggle constellationLabelToggle;
     private CameraControl controls;
     public HorizonLine horizonLine;
+    public StarHoverTool starTool;
+
     private void Awake()
     {
         controls = new CameraControl();
@@ -44,6 +46,12 @@ public class SettingsMenu : MonoBehaviour
         if (!isOpen)
         {
             cameraController.DisableControls();
+
+            // Don't allow tooltip to stay open if user opens settings menu
+            if (starTool != null)
+            {
+                starTool.ClosePanel();
+            }
         }
         else
         {

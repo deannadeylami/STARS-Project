@@ -82,11 +82,13 @@ public class SkyMapRenderer : MonoBehaviour
     // Always populated regardless of horizon toggle — used for constellation label centroid and line clipping.
     public Dictionary<int, UnityEngine.Vector3> AllStarPositions = new Dictionary<int, UnityEngine.Vector3>();
 
+        public List<StarRecord> RenderedStars = new List<StarRecord>();
     public void RenderSky()
     {
         starDataList.Clear();
         StarPositions.Clear();
         AllStarPositions.Clear();
+        RenderedStars.Clear();
 
         if (SkySession.Instance == null)
         {
@@ -185,6 +187,7 @@ public class SkyMapRenderer : MonoBehaviour
             };
 
             starDataList.Add(data);
+            RenderedStars.Add(star);
 
             if (star.hip > 0)
             {
@@ -203,6 +206,8 @@ public class SkyMapRenderer : MonoBehaviour
             SkySceneReadyTracker.Instance.ReportReady("Stars");
         else
             Debug.LogWarning("[SkyMapRenderer] SkySceneReadyTracker not found — loading overlay won't dismiss.");
+        
+        GetComponent<StarHoverTool>()?.Rebuild();
     }
 
     public void OnHorizonToggleChanged(bool value)
@@ -313,5 +318,13 @@ public class SkyMapRenderer : MonoBehaviour
             RenderStarsGPU();
         }
     }
-
+    public Vector3[] GetStarPositions()
+    {
+        Vector3[] pos = new Vector3[starDataList.Count];
+        for(int i = 0; i < starDataList.Count; i++)
+        {
+            pos[i] = starDataList[i].position;
+        }
+        return pos;
+    }
 }
