@@ -2,7 +2,9 @@ using UnityEngine;
 using TMPro;
 using System.Collections.Generic;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 
+// Handles clicking stars and showing tooltip info
 public class StarHoverTool : MonoBehaviour
 {
     [Header("References")]
@@ -10,6 +12,7 @@ public class StarHoverTool : MonoBehaviour
     public HYGCatalogParser catalog;
     public Camera           mainCamera;
     private Vector2 mouseDownPos;
+    public GameObject SettingsPanel;
 
 
     [Header("Tooltip UI")]
@@ -33,60 +36,61 @@ public class StarHoverTool : MonoBehaviour
     {
         tooltipPanel.SetActive(false);
     }
+
+    // Rebuilds particle + grid data (call after rendering stars)
     public void Rebuild()
-    {
-        Debug.Log("Rebuild started");
-        
+    {        
         if (ps == null)
         {
-            Debug.Log("ps is null, getting component");
             ps = skyRenderer.GetComponent<ParticleSystem>();
         }
-
-        Debug.Log($"Particle count: {ps.particleCount}");
         
+        // grab particles
         particles = new ParticleSystem.Particle[ps.particleCount];
         ps.GetParticles(particles);
-
-        Debug.Log($"RenderedStars count: {skyRenderer.RenderedStars.Count}");
         
+        // copy star data
         orderedStars = new List<StarRecord>(skyRenderer.RenderedStars);
 
+        // build a grid from positions
         var positions = new Vector3[particles.Length];
         for (int i = 0; i < particles.Length; i++)
             positions[i] = particles[i].position;
 
         grid = new StarSpatialGrid(positions, azDivisions: 36, altDivisions: 18);
-        Debug.Log($"Rebuild complete — grid built with {particles.Length} stars");
-    }
+   }
 
 void Update()
 {
+    // prevent tooltip popups while in settings menu.
+    if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+    {
+        return;
+    }
+
     if (grid == null) return;
 
     if (Mouse.current != null)
     {
+        // record where click was
         if (Mouse.current.leftButton.wasPressedThisFrame)
         {
             mouseDownPos = Mouse.current.position.ReadValue();
         }
 
+        // make sure it was a click, not a drag.
         if (Mouse.current.leftButton.wasReleasedThisFrame)
         {
             Vector2 mouseUpPos = Mouse.current.position.ReadValue();
             float dragDistance = Vector2.Distance(mouseDownPos, mouseUpPos);
 
-            Debug.Log($"Drag distance: {dragDistance}");
-            Debug.Log($"Particle count: {particles.Length}");
-            Debug.Log($"OrderedStars count: {orderedStars.Count}");
-
             if (dragDistance < 40f)
             {
                 int hitIndex = GetStarUnderMouse(mouseUpPos);
-                Debug.Log($"Hit index: {hitIndex}");
 
                 if (hitIndex >= 0)
                 {
+                    // toggle tooltip if 
                     if (hitIndex == openPanelIndex && tooltipPanel.activeSelf)
                         ClosePanel();
                     else
@@ -100,21 +104,24 @@ void Update()
         }
     }
 }
-
+    // Finds closest star to mouse
     int GetStarUnderMouse(Vector2 mousePos)
     {
+        // convert ray into local space
         Ray worldRay = mainCamera.ScreenPointToRay(mousePos);
         Transform t  = skyRenderer.transform;
         Ray localRay = new Ray(
             t.InverseTransformPoint(worldRay.origin),
             t.InverseTransformDirection(worldRay.direction).normalized
         );
-
+        
+        // get nearby stars from grid
         List<int> candidates = grid.Query(localRay, queryAngleDeg);
 
         int   bestIndex = -1;
         float bestDist  = screenPixelRadius;
-
+        
+        // find closest one on screen
         foreach (int i in candidates)
         {
             if (i >= particles.Length) continue;
@@ -135,6 +142,7 @@ void Update()
         return bestIndex;
     }
 
+    // Opens tooltip for a star
     void OpenPanel(int index, Vector2 mousePos)
     {
         openPanelIndex = index;
@@ -165,6 +173,7 @@ void Update()
         return $"HIP {star.hip}";
     }
 
+    // Keeps tooltip near mouse and inside screen
     void PositionPanel(RectTransform panel, Vector2 mousePos)
     {
         RectTransformUtility.ScreenPointToLocalPointInRectangle(

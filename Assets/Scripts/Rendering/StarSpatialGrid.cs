@@ -50,8 +50,21 @@ public class StarSpatialGrid
     int CellKey(Vector3 pos)
     {
         SphericalCoords(pos, out float az, out float alt);
-        int azIdx  = Mathf.Clamp((int)(az  / (360f / azBuckets)),  0, azBuckets  - 1);
-        int altIdx = Mathf.Clamp((int)(alt / (90f  / altBuckets)), 0, altBuckets - 1);
+
+        int azIdx = Mathf.Clamp(
+            (int)(az / (360f / azBuckets)),
+            0,
+            azBuckets - 1
+        );
+
+        float altShifted = alt + 90f;
+
+        int altIdx = Mathf.Clamp(
+            (int)(altShifted / (180f / altBuckets)),
+            0,
+            altBuckets - 1
+        );
+
         return azIdx * altBuckets + altIdx;
     }
 
@@ -59,8 +72,11 @@ public class StarSpatialGrid
     {
         int azIdx  = key / altBuckets;
         int altIdx = key % altBuckets;
-        float az  = (azIdx  + 0.5f) * (360f / azBuckets)  * Mathf.Deg2Rad;
-        float alt = (altIdx + 0.5f) * (90f  / altBuckets) * Mathf.Deg2Rad;
+
+        float az = (azIdx + 0.5f) * (360f / azBuckets) * Mathf.Deg2Rad;
+
+        float alt = ((altIdx + 0.5f) * (180f / altBuckets) - 90f) * Mathf.Deg2Rad;
+
         return new Vector3(
             Mathf.Cos(alt) * Mathf.Sin(az),
             Mathf.Sin(alt),

@@ -1911,6 +1911,7 @@ MonoBehaviour:
   skyRenderer: {fileID: 1588375754}
   catalog: {fileID: 1351580314}
   mainCamera: {fileID: 963194227}
+  SettingsPanel: {fileID: 711998671}
   tooltipPanel: {fileID: 1386124100}
   tooltipName: {fileID: 1363110862}
   tooltipDetails: {fileID: 63918126}
@@ -14608,6 +14609,7 @@ MonoBehaviour:
   skyRenderer: {fileID: 1588375754}
   catalog: {fileID: 1351580314}
   mainCamera: {fileID: 963194227}
+  SettingsPanel: {fileID: 0}
   tooltipPanel: {fileID: 1386124100}
   tooltipName: {fileID: 1363110862}
   tooltipDetails: {fileID: 63918126}
