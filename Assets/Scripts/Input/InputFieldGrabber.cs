@@ -138,7 +138,7 @@ public class InputFieldGrabber : MonoBehaviour
     // Preset Events
     private List<EventPreset> events = new List<EventPreset>
     {
-        new EventPreset { label="Planetary Parade",                 latDeg=40, latMin=42.7, latDir="N", lonDeg=74,  lonMin=0.4,  lonDir="W", year=2026, month=2, day=28, hour=19, minute=0  },
+        new EventPreset { label="Planetary Parade",                 latDeg=40, latMin=0, latDir="N", lonDeg=74,  lonMin=0,  lonDir="W", year=2025, month=1, day=18, hour=18, minute=30  },
         new EventPreset { label="Apollo 11 Launch",                 latDeg=28, latMin=31.0, latDir="N", lonDeg=80,  lonMin=39.0, lonDir="W", year=1969, month=7, day=16, hour=21, minute=0  },
         new EventPreset { label="Artemis II Launch",                latDeg=28, latMin=37.6, latDir="N", lonDeg=80,  lonMin=37.3, lonDir="W", year=2026, month=4, day=1, hour=22, minute=35  },
         new EventPreset { label="Venus and Jupiter Conjunction",    latDeg=51, latMin=30.0, latDir="N", lonDeg=0,   lonMin=7.5,  lonDir="W", year=2026, month=6, day=8, hour=15, minute=0  },
