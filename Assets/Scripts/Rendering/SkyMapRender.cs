@@ -318,5 +318,13 @@ public class SkyMapRenderer : MonoBehaviour
             RenderStarsGPU();
         }
     }
-
+    public Vector3[] GetStarPositions()
+    {
+        Vector3[] pos = new Vector3[starDataList.Count];
+        for(int i = 0; i < starDataList.Count; i++)
+        {
+            pos[i] = starDataList[i].position;
+        }
+        return pos;
+    }
 }

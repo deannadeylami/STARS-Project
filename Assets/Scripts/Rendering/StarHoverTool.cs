@@ -44,18 +44,30 @@ public class StarHoverTool : MonoBehaviour
         {
             ps = skyRenderer.GetComponent<ParticleSystem>();
         }
-        
-        // grab particles
-        particles = new ParticleSystem.Particle[ps.particleCount];
-        ps.GetParticles(particles);
+
+        Vector3[] positions;
+
+        if (skyRenderer.gpuAccel) 
+        {
+            // If GPU mode is on, we don't have particles, we use the renderer's list
+            // We'll need to add a public way to get these positions from SkyMapRenderer
+            positions = skyRenderer.GetStarPositions(); 
+        }
+        else
+        {
+            // grab particles
+            particles = new ParticleSystem.Particle[ps.particleCount];
+            ps.GetParticles(particles);
+
+            // build a grid from positions
+            positions = new Vector3[particles.Length];
+            for (int i = 0; i < particles.Length; i++)
+                positions[i] = particles[i].position;
+
+        }
         
         // copy star data
         orderedStars = new List<StarRecord>(skyRenderer.RenderedStars);
-
-        // build a grid from positions
-        var positions = new Vector3[particles.Length];
-        for (int i = 0; i < particles.Length; i++)
-            positions[i] = particles[i].position;
 
         grid = new StarSpatialGrid(positions, azDivisions: 36, altDivisions: 18);
    }
@@ -124,17 +136,17 @@ void Update()
         // find closest one on screen
         foreach (int i in candidates)
         {
-            if (i >= particles.Length) continue;
-
-            Vector3 worldPos  = t.TransformPoint(particles[i].position);
+            // Get the position from our grid/list instead of the particle system
+            Vector3 localPos = grid.GetPosition(i); 
+            Vector3 worldPos = t.TransformPoint(localPos);
             Vector3 screenPos = mainCamera.WorldToScreenPoint(worldPos);
+            
             if (screenPos.z < 0) continue;
 
-            float screenDist = Vector2.Distance(mousePos,
-                                   new Vector2(screenPos.x, screenPos.y));
+            float screenDist = Vector2.Distance(mousePos, new Vector2(screenPos.x, screenPos.y));
             if (screenDist < bestDist)
             {
-                bestDist  = screenDist;
+                bestDist = screenDist;
                 bestIndex = i;
             }
         }

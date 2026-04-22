@@ -8,12 +8,15 @@ public class StarSpatialGrid
     private readonly int azBuckets;   // divisions around the horizon
     private readonly int altBuckets;  // divisions from horizon to zenith
     private readonly Dictionary<int, List<int>> cells = new();
+    private readonly Vector3[] positions;
 
     // starPositions: local-space positions from your particle system
     public StarSpatialGrid(Vector3[] starPositions, int azDivisions = 36, int altDivisions = 18)
     {
         azBuckets  = azDivisions;
         altBuckets = altDivisions;
+
+        positions = starPositions;
 
         for (int i = 0; i < starPositions.Length; i++)
         {
@@ -25,6 +28,15 @@ public class StarSpatialGrid
             }
             list.Add(i);
         }
+    }
+
+    public Vector3 GetPosition(int index)
+    {
+        if (index >= 0 && index < positions.Length)
+        {
+            return positions[index];
+        }
+        return Vector3.zero;
     }
 
     // Returns all star indices in cells the ray could intersect.
