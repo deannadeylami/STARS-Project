@@ -146,8 +146,8 @@ public class SkyMapRenderer : MonoBehaviour
             float minSize;
             if(!gpuAccel)
             {
-                maxSize = 4.5f;
-                minSize = 0.5f;                
+                maxSize = 2.0f;
+                minSize = 0.1f;                
             }
             else
             {
