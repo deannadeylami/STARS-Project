@@ -404,4 +404,10 @@ public class InputFieldGrabber : MonoBehaviour
         errorText.text = "";
         errorText.enabled = false;
     }
+
+    // Return to main menu screen.
+    public void ReturnToMainMenu()
+    {
+        SceneManager.LoadScene("Title");
+    }
 }
