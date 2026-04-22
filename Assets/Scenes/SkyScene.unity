@@ -15377,9 +15377,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StarChartExporter2D
   catalog: {fileID: 1351580314}
-  starLabelRenderer: {fileID: 0}
-  planetRenderer: {fileID: 0}
-  constellationRenderer: {fileID: 0}
+  starLabelRenderer: {fileID: 299332702}
+  planetRenderer: {fileID: 40056112}
+  constellationRenderer: {fileID: 1849985793}
   width: 2048
   height: 2048
   jpegQuality: 100
@@ -15460,8 +15460,8 @@ MonoBehaviour:
   enableSunLabel: 1
   enableMoonLabel: 1
   refraction: 1
-  planetDotRadiusPx: 2.5
-  planetRingRadiusPx: 5.5
+  planetDotRadiusPx: 6
+  planetRingRadiusPx: 8
   planetRingThicknessPx: 1
   planetMagnitudeLimit: 99
   mercuryColor:
