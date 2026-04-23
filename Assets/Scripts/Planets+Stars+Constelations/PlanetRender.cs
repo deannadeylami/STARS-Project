@@ -31,7 +31,9 @@ public Material jupiterMat;
 public Material saturnMat;
 public Material uranusMat;
 public Material neptuneMat;
-
+private List<Vector3> placedLabels = new List<Vector3>();
+public float labelCollisionRadius = 2.0f;
+public int maxLabelAdjustIterations = 10;
 UnityEngine.Vector3 sunDir = UnityEngine.Vector3.zero;
     private Dictionary<string, GameObject> spawnedPlanets =
         new Dictionary<string, GameObject>();
@@ -105,6 +107,7 @@ foreach (Planet planet in planetLoader.planets)
     UnityEngine.Debug.Log("Sun Direction: " + sunDir);
     break; // stop once found
 }
+        placedLabels.Clear();
         foreach (Planet planet in planetLoader.planets)
         {
             if(planet.body == "Sun")
@@ -196,7 +199,7 @@ foreach (Planet planet in planetLoader.planets)
         OnLabelsVisibilityChanged?.Invoke(visible);
     }
 
-private void CreateLabel(string planetName, UnityEngine.Vector3 planetPosition)
+private void CreateLabel(string planetName, Vector3 planetPosition)
 {
     if (planetLabelPrefab == null)
     {
@@ -204,28 +207,94 @@ private void CreateLabel(string planetName, UnityEngine.Vector3 planetPosition)
         return;
     }
 
-    // Move label slightly outward from sky dome
-    UnityEngine.Vector3 labelPosition =
-        planetPosition.normalized * (skyRadius + labelOffset);
+    Vector3 dir = planetPosition.normalized;
 
-    // Instantiate label
+    // Base position just outside sky dome
+    Vector3 basePosition = dir * (skyRadius + labelOffset);
+
+    float baseOffset = 2.0f;     // how far labels shift sideways
+    float minDistance = 3.0f;    // collision radius
+
+    Vector3 labelPosition = basePosition;
+
+    int attempts = 0;
+    int maxAttempts = 6;
+
+    // === RADIAL SEARCH (same idea as stars) ===
+    while (attempts < maxAttempts)
+    {
+        float angle = (360f / maxAttempts) * attempts;
+
+        Quaternion rotation = Quaternion.AngleAxis(angle, dir);
+
+        Vector3 tangent = Vector3.Cross(dir, Vector3.up).normalized;
+
+        // Edge case fix
+        if (tangent == Vector3.zero)
+            tangent = Vector3.Cross(dir, Vector3.right).normalized;
+
+        Vector3 offsetDir = rotation * tangent;
+
+        Vector3 possiblePosition = basePosition + offsetDir * baseOffset;
+
+        bool overlap = false;
+
+        foreach (var existing in placedLabels)
+        {
+            if (Vector3.Distance(possiblePosition, existing) < minDistance)
+            {
+                overlap = true;
+                break;
+            }
+        }
+
+        if (!overlap)
+        {
+            labelPosition = possiblePosition;
+            break;
+        }
+
+        attempts++;
+    }
+
+    // Fallback if everything overlaps
+    if (attempts == maxAttempts)
+    {
+        labelPosition += Vector3.up * 1.5f;
+    }
+
+    // === CREATE LABEL ===
     GameObject label = Instantiate(
         planetLabelPrefab,
         labelPosition,
-        UnityEngine.Quaternion.identity,
+        Quaternion.identity,
         labelParent.transform
     );
 
     TextMesh textMesh = label.GetComponent<TextMesh>();
 
+    if (textMesh != null)
+    {
         textMesh.text = planetName;
         textMesh.color = labelColor;
-    label.transform.localScale = UnityEngine.Vector3.one * labelScale;
+    }
 
-        label.transform.LookAt(Camera.main.transform);
-        label.transform.Rotate(0, 180f, 0);
+    label.transform.localScale = Vector3.one * labelScale;
+
+    label.transform.LookAt(Camera.main.transform);
+    label.transform.Rotate(0, 180f, 0);
 
     activeLabels.Add(label);
+    placedLabels.Add(labelPosition);
+}
+private bool IsColliding(Vector3 position)
+{
+    foreach (Vector3 existing in placedLabels)
+    {
+        if (Vector3.Distance(position, existing) < labelCollisionRadius)
+            return true;
+    }
+    return false;
 }
 
 public void OnHorizonToggleChanged(bool value)
