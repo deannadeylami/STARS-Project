@@ -1,89 +1,139 @@
-# STARS-Project
-Amateur and professional astronomers use star maps as a guide in finding the locations of stars, planets, and other celestial objects for observation.  This class project will be to produce a software system which will create on screen displays and printable star maps for observers at any location on the earth for a given date and time.
+#STARS Project
+Amateur and professional astronomers use star maps as a guide for locating stars, planets, and other celestial objects. **STARS** is a software system that generates on-screen displays and printable star maps for observers anywhere on Earth, for any given date and time.
 
-## Description
+---
 
-An in-depth paragraph about your project and overview of use.
+## Installation
 
-## Installing
+### Windows / Linux
 
-### For Windows Users
-1. Download STARSProject-StandaloneWindows64-vX.X.X or STARSProject-StandaloneLinux64-vX.X.X.zip,
-   depending on your OS.
-3. Extract the contents.
-4. Run STARSProject.exe.
+1. Download the appropriate build for your OS:
+   - **Windows:** `STARSProject-StandaloneWindows64-vX.X.X.zip`
+   - **Linux:** `STARSProject-StandaloneLinux64-vX.X.X.zip`
+2. Extract the contents of the zip file.
+3. Run `STARSProject.exe`.
 
-**Note: **It is not required to have Unity installed, this software is self-contained.
+> **Note:** Unity does not need to be installed — this software is fully self-contained.
 
 ### Verifying Software Integrity
-To ensure your download is legitimate, compare the checksum of your downloaded zip file with the provided **.sha256** string.
-* For Windows, you can use Get-FileHash command in Powershell to get the hash, as shown below.
-<img width="1079" height="120" alt="image" src="https://github.com/user-attachments/assets/febcb115-019e-47eb-9b85-71de6b36e22f" />
 
-* Compare the hash with the contents of the .sha256 file, as shown below.
-<img width="886" height="39" alt="image" src="https://github.com/user-attachments/assets/4c52f719-8e28-4437-b479-2fd8344a8217" />
-* If they are the same, the software has not been altered.
+To confirm your download hasn't been tampered with, compare the checksum of your zip file against the provided `.sha256` file.
 
-## Executing program
-### Start Menu
-* After opening STARSProject.exe, you will be met with the start menu, as shown below.
-<img width="576" height="477" alt="image" src="https://github.com/user-attachments/assets/4c6f8313-c4fa-4d2d-869b-9e4764733eb8" />
+On **Windows (PowerShell)**:
+```powershell
+Get-FileHash .\STARSProject-StandaloneWindows64-vX.X.X.zip -Algorithm SHA256
+```
 
-* There are two options to continue to the next scene, quick start and custom setup.
-* Quick start jumps the user straight to the Sky Map, using the default Planetary Parade event (most of the planets lining up in the sky).
-* Custom setup takes the user to the input screen.
+Compare the output hash to the contents of the `.sha256` file. If they match, the software is unaltered.
+
+---
+
+## Getting Started
+
+When you launch `STARSProject.exe`, you'll be greeted by the **Start Menu**, which offers two options:
+
+| Option | Description |
+|--------|-------------|
+| **Quick Start** | Jumps directly to the Sky Map using the default *Planetary Parade* event |
+| **Custom Setup** | Opens the Input Screen to configure your own location, date, and time |
+
+---
 
 ## GPU Acceleration
-* STARS utilizes a dual-rendering pipeline so users can choose between higher stability vs. high performance visuals.
-* Toggle OFF (default) - Uses the CPU and Unity's Particle System to draw stars. This is highly compatible with older hardware and laptops without dedicated graphics cards.
-* Toggle ON - Offloads the star rendering to the GPU. This provides a much higher frame rate, smoother camera rotation, and sharper star visuals.
+
+STARS uses a dual-rendering pipeline, letting you balance stability and performance:
+
+| Mode | Description |
+|------|-------------|
+| **Toggle OFF** *(default)* | Uses the CPU and Unity's Particle System. Best for older hardware or laptops without a dedicated GPU. |
+| **Toggle ON** | Offloads star rendering to the GPU for higher frame rates, smoother camera rotation, and sharper visuals. |
+
+---
 
 ## Input Screen
-<img width="640" height="650" alt="image" src="https://github.com/user-attachments/assets/5de3ff84-779b-4677-b3c3-c37c8a43196e" />
-* The input scene collects four categories of data to compute the sky scene.
-   - Coordinates
-         - Latitude - Input in Degrees (0-90) and Minutes (0-59.999), with a toggle for North (N) or South (S).
-         - Longitude - Input in Degrees (0-180) and Minutes (0-59.999), with a toggle for East (E) or West (W).
-   - Temporal Data
-         - Date - Entered in YYYY-MM-DD formate to determine planet positions and star visibility
-         - Time - Entered in HH:MM (24-hour format).
-   - All input values are validated, the system will not allow you to continue until correct astronomical data is included.
 
-* Presets
-  - To streamline the experience for users, we have a preset system.
-  - Preset events contain special astronomical and historical events such as the Apollo 11 Launch or the Planetary Parade.
-  - Preset Locations contain significant landmarks and wonders of the world such as NYC statue or Mount everst.
-  - User custom presets are able to be created,
-      - Fill out longitude, latitude, date & time as usual.
-      - Click "Save Preset"
-      - Check under my presets for your user presets.
-      - If you want to delete your preset, click it under the "my presets" dropdown and click "Delete Preset"
+The Input Screen collects four categories of data to compute your sky view:
 
-## SkyScene
+### Coordinates
+- **Latitude** — Degrees (0–90) and Minutes (0–59.999), with a **N/S** toggle
+- **Longitude** — Degrees (0–180) and Minutes (0–59.999), with an **E/W** toggle
 
-* Step-by-step bullets
-```
-code blocks for commandsLatitude: Input in Degrees (0–90) and Minutes (0–59.999), with a toggle for North (N) or South (S).
-```
+### Temporal Data
+- **Date** — Format: `YYYY-MM-DD`
+- **Time** — Format: `HH:MM` (24-hour)
+
+> All inputs are validated — the app will not proceed until astronomically valid data is entered.
+
+### Presets
+
+To speed up setup, STARS includes a preset system:
+
+- **Event Presets** — Notable astronomical and historical events (e.g., Apollo 11 Launch, Planetary Parade)
+- **Location Presets** — Famous landmarks (e.g., NYC Statue of Liberty, Mount Everest)
+- **User Custom Presets** — Save your own configurations:
+  1. Fill in your latitude, longitude, date, and time.
+  2. Click **Save Preset**.
+  3. Find your preset under **My Presets**.
+  4. To delete a preset, select it from the **My Presets** dropdown and click **Delete Preset**.
+
+---
+
+## Sky Scene
+
+### Navigation
+
+- **Click + Drag** (Left Mouse Button) — Rotate the camera
+- The **green plane** represents the horizon — anything below it isn't visible in real life
+- The **UI Compass** at the top of the screen helps with orientation
+- **Click any star** to view details: Name, RA, Dec, Magnitude, Spectral Classification, and Distance
+
+### Label Colors
+
+| Color | Type |
+|-------|------|
+| White | Stars |
+| Yellow | Constellations |
+| Blue | Planets |
+
+### Settings Menu
+
+Press `ESC` or click the **Settings** button (top-left) to open the settings menu.
+
+**Visual Toggles:**
+
+| Toggle | Description |
+|--------|-------------|
+| Session Info | Shows/hides active coordinates and timestamp |
+| Compass | Toggles cardinal direction indicators (N, S, E, W) |
+| Constellations | Draws lines connecting stars into constellation patterns |
+| Objects Under Horizon | Removes the ground plane to show objects on the far side of Earth |
+| Labels | Toggles text overlays for stars, planets, and constellations |
+
+**Export Options:**
+
+| Option | Description |
+|--------|-------------|
+| Export JPEG | Saves the current view as a high-quality image |
+| Export 8.5×11 | Generates a star chart formatted for standard printer paper |
+
+**Navigation:**
+
+| Option | Description |
+|--------|-------------|
+| Main Menu | Returns to the Custom Setup screen |
+| Quit | Safely exits the application |
+
+---
 
 ## Help
 
-Any advise for common problems or issues.
-```
-command to run if program contains helper info
-```
+If you encounter any issues, please reach out to one of the project authors below.
+
+---
 
 ## Authors
 
-Deanna Deylami
-Camerin Casesa
-Diana De Santiago
-Eli Berg
-
-## Version History
-
-* 0.2
-    * Various bug fixes and optimizations
-    * See [commit change]() or See [release history]()
-* 0.1
-    * Initial Release
+- Deanna Deylami
+- Camerin Casesa
+- Diana De Santiago
+- Eli Berg
