@@ -67,12 +67,12 @@ STARS uses a dual-rendering pipeline, letting you balance stability and performa
 The Input Screen collects the following data to compute your sky view:
 
 ### Coordinates
-- **Latitude** — Degrees (0–90) and Minutes (0–59.999), with a **N/S** toggle
-- **Longitude** — Degrees (0–180) and Minutes (0–59.999), with an **E/W** toggle
+- **Latitude** - Degrees (0–90) and Minutes (0–59.999), with a **N/S** toggle
+- **Longitude** - Degrees (0–180) and Minutes (0–59.999), with an **E/W** toggle
 
 ### Temporal Data
-- **Date** — Format: `YYYY-MM-DD` (valid range: 1900–2100)
-- **Time** — Format: `HH:MM` (24-hour)
+- **Date** - Format: `YYYY-MM-DD` (valid range: 1900–2100)
+- **Time** - Format: `HH:MM` (24-hour)
 
 > All inputs are validated, the app will not proceed until astronomically valid data is entered.
 
@@ -80,9 +80,9 @@ The Input Screen collects the following data to compute your sky view:
 
 To speed up setup, STARS includes a preset system:
 
-- **Event Presets** — Notable astronomical and historical events (e.g., Apollo 11 Launch, Planetary Parade)
-- **Location Presets** — Famous landmarks (e.g., NYC Statue of Liberty, Mount Everest)
-- **User Custom Presets** — Save your own configurations:
+- **Event Presets** - Notable astronomical and historical events (e.g., Apollo 11 Launch, Planetary Parade)
+- **Location Presets** - Famous landmarks (e.g., NYC Statue of Liberty, Mount Everest)
+- **User Custom Presets** - Save your own configurations for laterr:
   1. Fill in your latitude, longitude, date, and time.
   2. Click **Save Preset**.
   3. Find your preset under **My Presets**.
@@ -96,8 +96,8 @@ The Sky Scene is a 3D interactive star map rendered accurately for your input lo
 
 ### Navigation
 
-- **Click + Drag** (Left Mouse Button) — Rotate the camera
-- The **green plane** represents the horizon — anything below it isn't visible in real life
+- **Click + Drag** (Left Mouse Button) - Rotate the camera
+- The **green plane** represents the horizon - anything below it isn't visible in real life
 - The **UI Compass** at the top of the screen helps with orientation
 - **Click any star** to display that star's details (see Star Information below)
 
