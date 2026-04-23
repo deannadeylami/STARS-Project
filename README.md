@@ -28,16 +28,42 @@ To ensure your download is legitimate, compare the checksum of your downloaded z
 ### Start Menu
 * After opening STARSProject.exe, you will be met with the start menu, as shown below.
 <img width="576" height="477" alt="image" src="https://github.com/user-attachments/assets/4c6f8313-c4fa-4d2d-869b-9e4764733eb8" />
+
 * There are two options to continue to the next scene, quick start and custom setup.
 * Quick start jumps the user straight to the Sky Map, using the default Planetary Parade event (most of the planets lining up in the sky).
 * Custom setup takes the user to the input screen.
-* The user is able to toggle GPU acceleration to 
+
+## GPU Acceleration
+* STARS utilizes a dual-rendering pipeline so users can choose between higher stability vs. high performance visuals.
+* Toggle OFF (default) - Uses the CPU and Unity's Particle System to draw stars. This is highly compatible with older hardware and laptops without dedicated graphics cards.
+* Toggle ON - Offloads the star rendering to the GPU. This provides a much higher frame rate, smoother camera rotation, and sharper star visuals.
 
 ## Input Screen
+<img width="640" height="650" alt="image" src="https://github.com/user-attachments/assets/5de3ff84-779b-4677-b3c3-c37c8a43196e" />
+* The input scene collects four categories of data to compute the sky scene.
+   - Coordinates
+         - Latitude - Input in Degrees (0-90) and Minutes (0-59.999), with a toggle for North (N) or South (S).
+         - Longitude - Input in Degrees (0-180) and Minutes (0-59.999), with a toggle for East (E) or West (W).
+   - Temporal Data
+         - Date - Entered in YYYY-MM-DD formate to determine planet positions and star visibility
+         - Time - Entered in HH:MM (24-hour format).
+   - All input values are validated, the system will not allow you to continue until correct astronomical data is included.
+
+* Presets
+  - To streamline the experience for users, we have a preset system.
+  - Preset events contain special astronomical and historical events such as the Apollo 11 Launch or the Planetary Parade.
+  - Preset Locations contain significant landmarks and wonders of the world such as NYC statue or Mount everst.
+  - User custom presets are able to be created,
+      - Fill out longitude, latitude, date & time as usual.
+      - Click "Save Preset"
+      - Check under my presets for your user presets.
+      - If you want to delete your preset, click it under the "my presets" dropdown and click "Delete Preset"
+
+## SkyScene
 
 * Step-by-step bullets
 ```
-code blocks for commands
+code blocks for commandsLatitude: Input in Degrees (0–90) and Minutes (0–59.999), with a toggle for North (N) or South (S).
 ```
 
 ## Help
